@@ -1,0 +1,154 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  // output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String?
+  role      Role     @default(USER)
+  domains   Domain[]
+  lists     EmailList[]
+  campaigns Campaign[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+  EmailTemplate EmailTemplate[]
+}
+
+model Domain {
+  id          String      @id @default(cuid())
+  userId      String
+  domain      String
+  dkimKey     String?
+  spfRecord   String?
+  dmarcRecord String?
+  verified    Boolean     @default(false)
+  reputation  Float       @default(0) // Domain reputation score
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaigns   Campaign[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@map("domains")
+}
+
+model EmailList {
+  id          String      @id @default(cuid())
+  name        String
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emails      Email[]
+  campaigns   Campaign[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@map("email_lists")
+}
+
+model Email {
+  id        String      @id @default(cuid())
+  address   String      @unique
+  valid     Boolean     @default(true)
+  listId    String
+  list      EmailList   @relation(fields: [listId], references: [id], onDelete: Cascade)
+  sends     EmailSend[]
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@map("emails")
+}
+
+model Campaign {
+  id          String          @id @default(cuid())
+  name        String
+  subject     String
+  content     String
+  userId      String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  domainId    String
+  domain      Domain          @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  listId      String
+  list        EmailList       @relation(fields: [listId], references: [id], onDelete: Cascade)
+  sends       EmailSend[]
+  status      CampaignStatus  @default(DRAFT)
+  scheduledAt DateTime?
+  sentAt      DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@map("campaigns")
+  EmailTemplate EmailTemplate[]
+}
+
+model EmailSend {
+  id          String        @id @default(cuid())
+  emailId     String
+  email       Email         @relation(fields: [emailId], references: [id], onDelete: Cascade)
+  campaignId  String
+  campaign    Campaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  status      SendStatus    @default(PENDING)
+  openedAt    DateTime?
+  clickedAt   DateTime?
+  bouncedAt   DateTime?
+  bounceReason String?
+  retries     Int           @default(0)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@map("email_sends")
+}
+
+model EmailTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  subject     String
+  content     String
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaigns   Campaign[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("email_templates")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  SENT
+  FAILED
+  PAUSED
+}
+
+enum SendStatus {
+  PENDING
+  SENT
+  DELIVERED
+  OPENED
+  CLICKED
+  BOUNCED
+  FAILED
+  RETRYING
+}

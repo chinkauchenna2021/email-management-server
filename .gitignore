@@ -33,3 +33,4 @@ build
 *.log
 *.sql
 *.sqlite
+/src/generated/prisma

@@ -11,12 +11,13 @@ export interface AuthRequest extends Request {
   };
 }
 
-export const authenticate = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const authenticate = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     const token = req.header('Authorization')?.replace('Bearer ', '');
     
     if (!token) {
-      return res.status(401).json({ message: 'Access denied. No token provided.' });
+      res.status(401).json({ message: 'Access denied. No token provided.' });
+      return;
     }
     
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
@@ -28,14 +29,17 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
     });
     
     if (!user) {
-      return res.status(401).json({ message: 'Invalid token.' });
+      res.status(401).json({ message: 'Invalid token.' });
+      return;
     }
     
     req.user = user;
     next();
+    return;
   } catch (error) {
     logger.error('Authentication error:', error);
     res.status(401).json({ message: 'Invalid token.' });
+    return;
   }
 };
 
@@ -50,5 +54,6 @@ export const authorize = (roles: string[]) => {
     }
     
     next();
+    return;
   };
 };

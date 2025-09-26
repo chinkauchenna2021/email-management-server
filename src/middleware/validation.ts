@@ -11,6 +11,7 @@ export const validate = (schema: z.ZodSchema<any>) => {
         params: req.params,
       });
       next();
+      return;
     } catch (error:any) {
       if (error instanceof z.ZodError) {
         logger.error('Validation error:', error?.issues);
@@ -23,6 +24,7 @@ export const validate = (schema: z.ZodSchema<any>) => {
         });
       }
       next(error);
+      return;
     }
   };
 };

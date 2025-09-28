@@ -10,13 +10,13 @@ export class EmailController {
   static async createEmailList(req: Request, res: Response) {
     try {
       const userId = (req as any).user.id;
-      const { name } = req.body;
+      const { title, description, emails } = req.body;
       
-      if (!name) {
-        return res.status(400).json({ message: 'List name is required' });
+      if (!title) {
+        return res.status(400).json({ message: 'List title is required' });
       }
       
-      const emailList = await EmailService.createEmailList(userId, name);
+      const emailList = await EmailService.createEmailList(userId, title, description, emails);
       
       res.status(201).json({
         message: 'Email list created successfully',
@@ -27,6 +27,93 @@ export class EmailController {
       res.status(500).json({ message: 'Internal server error' });
     }
   }
+  
+  /**
+   * Update an email list
+   */
+  static async updateEmailList(req: Request, res: Response) {
+    try {
+      const userId = (req as any).user.id;
+      const { listId } = req.params;
+      const { title, description } = req.body;
+      
+      const emailList = await EmailService.updateEmailList(userId, listId, title, description);
+      
+      res.json({
+        message: 'Email list updated successfully',
+        emailList,
+      });
+    } catch (error) {
+      logger.error('Update email list error:', error);
+      
+      if (error instanceof Error && error.message === 'Email list not found') {
+        return res.status(404).json({ message: error.message });
+      }
+      
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  }
+  
+  /**
+   * Get email list with statistics
+   */
+  static async getEmailListWithStats(req: Request, res: Response) {
+    try {
+      const userId = (req as any).user.id;
+      const { listId } = req.params;
+      
+      const emailList = await EmailService.getEmailListWithStats(userId, listId);
+      
+      res.json({ emailList });
+    } catch (error) {
+      logger.error('Get email list with stats error:', error);
+      
+      if (error instanceof Error && error.message === 'Email list not found') {
+        return res.status(404).json({ message: error.message });
+      }
+      
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  }
+  
+  /**
+   * Get all email lists with statistics
+   */
+  static async getAllEmailListsWithStats(req: Request, res: Response) {
+    try {
+      const userId = (req as any).user.id;
+      
+      const emailLists = await EmailService.getAllEmailListsWithStats(userId);
+      
+      res.json({ emailLists });
+    } catch (error) {
+      logger.error('Get all email lists with stats error:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  }
+  
+  // Keep existing methods (getUserEmailLists, addEmailsToList, getEmailsInList, deleteEmailList, validateEmailBatch)
+
+  // static async createEmailList(req: Request, res: Response) {
+  //   try {
+  //     const userId = (req as any).user.id;
+  //     const { name } = req.body;
+      
+  //     if (!name) {
+  //       return res.status(400).json({ message: 'List name is required' });
+  //     }
+      
+  //     const emailList = await EmailService.createEmailList(userId, name);
+      
+  //     res.status(201).json({
+  //       message: 'Email list created successfully',
+  //       emailList,
+  //     });
+  //   } catch (error) {
+  //     logger.error('Create email list error:', error);
+  //     res.status(500).json({ message: 'Internal server error' });
+  //   }
+  // }
   
   /**
    * Get user email lists

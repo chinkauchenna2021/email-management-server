@@ -6,21 +6,176 @@ export class EmailService {
   /**
    * Create a new email list
    */
-  static async createEmailList(userId: string, name: string) {
+  static async createEmailList(userId: string, title: string, description?: string, emails?: string[]) {
     try {
       const emailList = await prisma.emailList.create({
         data: {
           userId,
-          name,
+          name: title,
+          description,
         },
       });
       
-      return emailList;
+      // If emails are provided, add them to the list
+      if (emails && emails.length > 0) {
+        await EmailService.addEmailsToList(userId, emailList.id, emails);
+      }
+      
+      // Get the updated list with email count
+      const listWithCount = await prisma.emailList.findUnique({
+        where: { id: emailList.id },
+        include: {
+          _count: {
+            select: { emails: true },
+          },
+        },
+      });
+      
+      return listWithCount;
     } catch (error) {
       logger.error('Create email list error:', error);
       throw error;
     }
   }
+  
+  /**
+   * Update an email list
+   */
+  static async updateEmailList(userId: string, listId: string, title?: string, description?: string) {
+    try {
+      // Check if list exists and belongs to user
+      const emailList = await prisma.emailList.findFirst({
+        where: { id: listId, userId },
+      });
+      
+      if (!emailList) {
+        throw new Error('Email list not found');
+      }
+      
+      // Update email list
+      const updatedList = await prisma.emailList.update({
+        where: { id: listId },
+        data: {
+          ...(title && { name: title }),
+          ...(description !== undefined && { description }),
+        },
+      });
+      
+      return updatedList;
+    } catch (error) {
+      logger.error('Update email list error:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Get email list with statistics
+   */
+  static async getEmailListWithStats(userId: string, listId: string) {
+    try {
+      // Check if list exists and belongs to user
+      const emailList = await prisma.emailList.findFirst({
+        where: { id: listId, userId },
+      });
+      
+      if (!emailList) {
+        throw new Error('Email list not found');
+      }
+      
+      // Get all emails in the list
+      const emails = await prisma.email.findMany({
+        where: { listId },
+      });
+      
+      // Calculate statistics
+      const totalEmails = emails.length;
+      const validEmails = emails.filter(email => email.valid).length;
+      const invalidEmails = totalEmails - validEmails;
+      const validityRate = totalEmails > 0 ? (validEmails / totalEmails) * 100 : 0;
+      
+      return {
+        id: emailList.id,
+        name: emailList.name,
+        description: emailList.description,
+        createdAt: emailList.createdAt,
+        stats: {
+          totalEmails,
+          validEmails,
+          invalidEmails,
+          validityRate: parseFloat(validityRate.toFixed(2)),
+        },
+      };
+    } catch (error) {
+      logger.error('Get email list with stats error:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Get all email lists with statistics
+   */
+  static async getAllEmailListsWithStats(userId: string) {
+    try {
+      const emailLists = await prisma.emailList.findMany({
+        where: { userId },
+        include: {
+          _count: {
+            select: { emails: true },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+      
+      // Calculate statistics for each list
+      const listsWithStats = await Promise.all(
+        emailLists.map(async (list) => {
+          const emails = await prisma.email.findMany({
+            where: { listId: list.id },
+          });
+          
+          const validEmails = emails.filter(email => email.valid).length;
+          const invalidEmails = emails.length - validEmails;
+          const validityRate = emails.length > 0 ? (validEmails / emails.length) * 100 : 0;
+          
+          return {
+            id: list.id,
+            name: list.name,
+            description: list.description,
+            createdAt: list.createdAt,
+            emailCount: list._count.emails,
+            stats: {
+              validEmails,
+              invalidEmails,
+              validityRate: parseFloat(validityRate.toFixed(2)),
+            },
+          };
+        })
+      );
+      
+      return listsWithStats;
+    } catch (error) {
+      logger.error('Get all email lists with stats error:', error);
+      throw error;
+    }
+  }
+  
+  // Keep existing methods (getUserEmailLists, addEmailsToList, getEmailsInList, deleteEmailList)
+
+  // static async createEmailList(userId: string, name: string) {
+  //   try {
+  //     const emailList = await prisma.emailList.create({
+  //       data: {
+  //         userId,
+  //         name,
+  //       },
+  //     });
+      
+  //     return emailList;
+  //   } catch (error) {
+  //     logger.error('Create email list error:', error);
+  //     throw error;
+  //   }
+  // }
   
   /**
    * Get user email lists

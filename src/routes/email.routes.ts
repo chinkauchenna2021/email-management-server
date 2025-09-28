@@ -10,7 +10,9 @@ router.use(authenticate);
 
 // Email list routes
 router.post('/lists', rateLimiter(60, 10), EmailController.createEmailList);
-router.get('/lists', EmailController.getUserEmailLists);
+router.get('/lists', EmailController.getAllEmailListsWithStats);
+router.get('/lists/:listId', EmailController.getEmailListWithStats);
+router.put('/lists/:listId', EmailController.updateEmailList);
 router.delete('/lists/:listId', EmailController.deleteEmailList);
 
 // Email management routes

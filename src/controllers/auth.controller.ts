@@ -6,7 +6,7 @@ export class AuthController {
   /**
    * Register a new user
    */
-  static async register(req: Request, res: Response) {
+  static async register(req: Request, res: Response): Promise<void | any> {
     try {
       const { email, password, name } = req.body;
       
@@ -35,7 +35,7 @@ export class AuthController {
   /**
    * Login user
    */
-  static async login(req: Request, res: Response) {
+  static async login(req: Request, res: Response): Promise<void | any> {
     try {
       const { email, password } = req.body;
       
@@ -64,7 +64,7 @@ export class AuthController {
   /**
    * Get user profile
    */
-  static async getProfile(req: Request, res: Response) {
+  static async getProfile(req: Request, res: Response): Promise<void | any> {
     try {
       const userId = (req as any).user.id;
       

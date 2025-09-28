@@ -7,7 +7,7 @@ export class EmailController {
   /**
    * Create a new email list
    */
-  static async createEmailList(req: Request, res: Response) {
+  static async createEmailList(req: Request, res: Response): Promise<void | any> {
     try {
       const userId = (req as any).user.id;
       const { title, description, emails } = req.body;
@@ -31,7 +31,7 @@ export class EmailController {
   /**
    * Update an email list
    */
-  static async updateEmailList(req: Request, res: Response) {
+  static async updateEmailList(req: Request, res: Response): Promise<void | any> {
     try {
       const userId = (req as any).user.id;
       const { listId } = req.params;
@@ -57,7 +57,7 @@ export class EmailController {
   /**
    * Get email list with statistics
    */
-  static async getEmailListWithStats(req: Request, res: Response) {
+  static async getEmailListWithStats(req: Request, res: Response): Promise<void | any> {
     try {
       const userId = (req as any).user.id;
       const { listId } = req.params;
@@ -134,7 +134,7 @@ export class EmailController {
   /**
    * Add emails to a list
    */
-  static async addEmailsToList(req: Request, res: Response) {
+  static async addEmailsToList(req: Request, res: Response): Promise<void | any> {
     try {
       const userId = (req as any).user.id;
       const { listId } = req.params;
@@ -161,7 +161,7 @@ export class EmailController {
   /**
    * Get emails in a list
    */
-  static async getEmailsInList(req: Request, res: Response) {
+  static async getEmailsInList(req: Request, res: Response): Promise<void | any> {
     try {
       const userId = (req as any).user.id;
       const { listId } = req.params;
@@ -185,7 +185,7 @@ export class EmailController {
   /**
    * Delete an email list
    */
-  static async deleteEmailList(req: Request, res: Response) {
+  static async deleteEmailList(req: Request, res: Response): Promise<void | any> {
     try {
       const userId = (req as any).user.id;
       const { listId } = req.params;
@@ -207,7 +207,7 @@ export class EmailController {
   /**
    * Validate a batch of emails
    */
-  static async validateEmailBatch(req: Request, res: Response) {
+  static async validateEmailBatch(req: Request, res: Response): Promise<void | any> {
     try {
       const { emails } = req.body;
       

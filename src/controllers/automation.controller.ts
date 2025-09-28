@@ -6,7 +6,7 @@ export class AutomationController {
   /**
    * Create a new email automation
    */
-  static async createAutomation(req: Request, res: Response) {
+  static async createAutomation(req: Request, res: Response): Promise<void | any> {
     try {
       const userId = (req as any).user.id;
       const { name, description, trigger, conditions, actions } = req.body;
@@ -57,7 +57,7 @@ export class AutomationController {
   /**
    * Get a specific automation
    */
-  static async getAutomation(req: Request, res: Response) {
+  static async getAutomation(req: Request, res: Response): Promise<void | any> {
     try {
       const userId = (req as any).user.id;
       const { automationId } = req.params;
@@ -79,7 +79,7 @@ export class AutomationController {
   /**
    * Update an automation
    */
-  static async updateAutomation(req: Request, res: Response) {
+  static async updateAutomation(req: Request, res: Response): Promise<void | any> {
     try {
       const userId = (req as any).user.id;
       const { automationId } = req.params;
@@ -114,7 +114,7 @@ export class AutomationController {
   /**
    * Delete an automation
    */
-  static async deleteAutomation(req: Request, res: Response) {
+  static async deleteAutomation(req: Request, res: Response): Promise<void | any> {
     try {
       const userId = (req as any).user.id;
       const { automationId } = req.params;
@@ -136,7 +136,7 @@ export class AutomationController {
   /**
    * Toggle automation status
    */
-  static async toggleAutomation(req: Request, res: Response) {
+  static async toggleAutomation(req: Request, res: Response): Promise<void | any> {
     try {
       const userId = (req as any).user.id;
       const { automationId } = req.params;

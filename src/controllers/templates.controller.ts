@@ -6,7 +6,7 @@ export class TemplateController {
   /**
    * Create a new email template
    */
-  static async createTemplate(req: Request, res: Response) {
+  static async createTemplate(req: Request, res: Response): Promise<void | any> {
     try {
       const userId = (req as any).user.id;
       const { name, subject, content, category } = req.body;
@@ -62,7 +62,7 @@ export class TemplateController {
   /**
    * Get a specific template
    */
-  static async getTemplate(req: Request, res: Response) {
+  static async getTemplate(req: Request, res: Response): Promise<void | any> {
     try {
       const userId = (req as any).user.id;
       const { templateId } = req.params;
@@ -84,7 +84,7 @@ export class TemplateController {
   /**
    * Update a template
    */
-  static async updateTemplate(req: Request, res: Response) {
+  static async updateTemplate(req: Request, res: Response): Promise<void | any> {
     try {
       const userId = (req as any).user.id;
       const { templateId } = req.params;
@@ -117,7 +117,7 @@ export class TemplateController {
   /**
    * Delete a template
    */
-  static async deleteTemplate(req: Request, res: Response) {
+  static async deleteTemplate(req: Request, res: Response): Promise<void | any> {
     try {
       const userId = (req as any).user.id;
       const { templateId } = req.params;
@@ -155,7 +155,7 @@ export class TemplateController {
   /**
    * Use a template
    */
-  static async useTemplate(req: Request, res: Response) {
+  static async useTemplate(req: Request, res: Response): Promise<void | any> {
     try {
       const userId = (req as any).user.id;
       const { templateId } = req.params;

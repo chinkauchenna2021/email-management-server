@@ -6,7 +6,7 @@ export class CampaignController {
   /**
    * Create a new campaign
    */
-  static async createCampaign(req: Request, res: Response) {
+  static async createCampaign(req: Request, res: Response): Promise<void | any> {
     try {
       const userId = (req as any).user.id;
       const { 
@@ -59,7 +59,7 @@ export class CampaignController {
   /**
    * Update a campaign
    */
-  static async updateCampaign(req: Request, res: Response) {
+  static async updateCampaign(req: Request, res: Response): Promise<void | any> {
     try {
       const userId = (req as any).user.id;
       const { campaignId } = req.params;
@@ -216,7 +216,7 @@ export class CampaignController {
   /**
    * Get campaign details
    */
-  static async getCampaignDetails(req: Request, res: Response) {
+  static async getCampaignDetails(req: Request, res: Response): Promise<void | any> {
     try {
       const userId = (req as any).user.id;
       const { campaignId } = req.params;
@@ -238,7 +238,7 @@ export class CampaignController {
   /**
    * Send a campaign
    */
-  static async sendCampaign(req: Request, res: Response) {
+  static async sendCampaign(req: Request, res: Response): Promise<void | any> {
     try {
       const userId = (req as any).user.id;
       const { campaignId } = req.params;
@@ -265,7 +265,7 @@ export class CampaignController {
   /**
    * Get campaign statistics
    */
-  static async getCampaignStats(req: Request, res: Response) {
+  static async getCampaignStats(req: Request, res: Response): Promise<void | any> {
     try {
       const userId = (req as any).user.id;
       const { campaignId } = req.params;
@@ -287,7 +287,7 @@ export class CampaignController {
   /**
    * Retry failed emails in a campaign
    */
-  static async retryFailedEmails(req: Request, res: Response) {
+  static async retryFailedEmails(req: Request, res: Response): Promise<void | any> {
     try {
       const userId = (req as any).user.id;
       const { campaignId } = req.params;

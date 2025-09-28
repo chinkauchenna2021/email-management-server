@@ -6,7 +6,7 @@ export class DomainController {
   /**
    * Add a new domain with SMTP settings
    */
-  static async addDomain(req: Request, res: Response) {
+  static async addDomain(req: Request, res: Response): Promise<void | any> {
     try {
       const userId = (req as any).user.id;
       const { domain, smtpSettings } = req.body;
@@ -32,7 +32,7 @@ export class DomainController {
   /**
    * Update domain SMTP settings
    */
-  static async updateDomainSettings(req: Request, res: Response) {
+  static async updateDomainSettings(req: Request, res: Response): Promise<void | any> {
     try {
       const userId = (req as any).user.id;
       const { domainId } = req.params;
@@ -59,7 +59,7 @@ export class DomainController {
   /**
    * Get domain statistics
    */
-  static async getDomainStats(req: Request, res: Response) {
+  static async getDomainStats(req: Request, res: Response): Promise<void | any> {
     try {
       const userId = (req as any).user.id;
       const { domainId } = req.params;
@@ -97,7 +97,7 @@ export class DomainController {
   /**
    * Test SMTP settings
    */
-  static async testSmtpSettings(req: Request, res: Response) {
+  static async testSmtpSettings(req: Request, res: Response): Promise<void | any> {
     try {
       const userId = (req as any).user.id;
       const { domainId } = req.params;
@@ -122,7 +122,7 @@ export class DomainController {
   /**
    * Verify DNS records for a domain
    */
-  static async verifyDomain(req: Request, res: Response) {
+  static async verifyDomain(req: Request, res: Response): Promise<void | any> {
     try {
       const userId = (req as any).user.id;
       const { domainId } = req.params;
@@ -160,7 +160,7 @@ export class DomainController {
   /**
    * Delete a domain
    */
-  static async deleteDomain(req: Request, res: Response) {
+  static async deleteDomain(req: Request, res: Response): Promise<void | any> {
     try {
       const userId = (req as any).user.id;
       const { domainId } = req.params;

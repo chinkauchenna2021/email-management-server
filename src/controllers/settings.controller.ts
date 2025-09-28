@@ -22,7 +22,7 @@ export class SettingsController {
   /**
    * Update user settings
    */
-  static async updateUserSettings(req: Request, res: Response) {
+  static async updateUserSettings(req: Request, res: Response): Promise<void | any> {
     try {
       const userId = (req as any).user.id;
       const { settings } = req.body;

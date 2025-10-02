@@ -9,6 +9,8 @@ import authRoutes from './routes/auth.routes';
 import domainRoutes from './routes/domain.routes';
 import emailRoutes from './routes/email.routes';
 import campaignRoutes from './routes/campaign.routes';
+import analyticsRoutes from './routes/analytics.routes';
+import monitoringRoutes from './routes/monitoring.routes';
 
 // Load environment variables
 dotenv.config();
@@ -27,6 +29,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/domains', domainRoutes);
 app.use('/api/emails', emailRoutes);
 app.use('/api/campaigns', campaignRoutes);
+app.use('/api/analytics', analyticsRoutes); // Add this
+app.use('/api/monitoring', monitoringRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {

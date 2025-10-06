@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { CampaignService } from '../services/campaign.services';
 import { logger } from '../utils/logger';
+import prisma from '../config/database';
 
 export class CampaignController {
   /**
@@ -305,4 +306,76 @@ export class CampaignController {
       res.status(500).json({ message: 'Internal server error' });
     }
   }
+
+
+  // src/controllers/campaign.controller.ts
+
+// Add this method to the CampaignController class
+static async getRecentCampaigns(req: Request, res: Response) {
+  try {
+    const userId = (req as any).user.id;
+    const limit = parseInt(req.query.limit as string) || 4;
+    
+    const campaigns = await prisma.campaign.findMany({
+      where: { userId },
+      include: {
+        sends: true,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      take: limit,
+    });
+
+    // Calculate metrics for each campaign
+    const recentCampaigns = campaigns.map((campaign) => {
+      const sent = campaign.sends.length;
+      const opened = campaign.sends.filter((send: { status: string }) => send.status === 'OPENED').length;
+      const clicked = campaign.sends.filter((send: { status: string }) => send.status === 'CLICKED').length;
+      
+      return {
+        id: campaign.id,
+        name: campaign.name,
+        status: campaign.status,
+        sent,
+        opened,
+        clicked,
+        date: CampaignController.formatDate(campaign.createdAt instanceof Date ? campaign.createdAt.toISOString() : campaign.createdAt),
+      };
+    });
+
+    res.json(recentCampaigns);
+  } catch (error) {
+    logger.error('Get recent campaigns error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
+// Helper method to format date
+private static formatDate(dateString: string): string {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffInHours = Math.abs(now.getTime() - date.getTime()) / (1000 * 60 * 60);
+  
+  if (diffInHours < 1) {
+    const diffInMinutes = Math.floor(diffInHours * 60);
+    return `${diffInMinutes} minute${diffInMinutes !== 1 ? 's' : ''} ago`;
+  } else if (diffInHours < 24) {
+    const diffInHoursRounded = Math.floor(diffInHours);
+    return `${diffInHoursRounded} hour${diffInHoursRounded !== 1 ? 's' : ''} ago`;
+  } else if (diffInHours < 48) {
+    return 'Yesterday';
+  } else if (date.toDateString() === now.toDateString()) {
+    return 'Today';
+  } else {
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    if (date.toDateString() === tomorrow.toDateString()) {
+      return 'Tomorrow';
+    }
+    
+    return date.toLocaleDateString();
+  }
+}
 }

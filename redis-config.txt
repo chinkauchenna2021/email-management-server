@@ -1,0 +1,60 @@
+// To connect to a Redis server using the rediss:// URL scheme with the help of stunnel and redis-cli
+
+// Install Redis by running the following command:
+// sudo apt install redis-server
+// Install STUNNEL4
+// sudo apt-get install stunnel4
+// Step 1: Install Stunnel
+// Make sure Stunnel is installed on your system. You can typically install it using your package manager (e.g., apt, yum, brew).
+
+// Step 2: Configure Stunnel
+// Create a Stunnel configuration file, for example, stunnel.conf. This file should contain the following configuration:
+
+// client = yes
+// foreground = yes
+
+// [redis]
+// accept = 127.0.0.1:6379
+// connect = prd-abcd-redis-xy-do-user-1234.b.db.ondigitalocean.com:25061
+// This configuration tells Stunnel to listen on localhost (127.0.0.1) on port 6379 and forward the traffic to your Redis server.
+
+// Step 3: Start Stunnel
+// Run Stunnel with the configuration file you created:
+
+// stunnel stunnel.conf
+// Note:- To run stunnel in the background, you can use the & symbol in the command line, which runs the command as a background process. Additionally, you may want to redirect the standard output and error to a file to avoid cluttering your terminal.
+
+// Get Vaibhav Jain’s stories in your inbox
+// Join Medium for free to get updates from this writer.
+
+// Enter your email
+// Subscribe
+// Here is an example command to run stunnel in the background:
+
+// stunnel stunnel.conf > stunnel.log 2>&1 &
+// Step 4: Update Rails Configuration
+
+// Update your Rails application’s config/database.yml or config/application.rb to use the new Redis URL:
+
+// production:
+//   url: redis://username:password@127.0.0.1:6379
+//   ...
+// Step 5: Restart Rails Application
+
+// Restart your Rails application to apply the changes.
+
+// Step 6: To connect redis with redis-cli
+
+// If you’ve set up stunnel to forward the Redis traffic to 127.0.0.1:6379, you can use the redis-cli to connect to the Redis server through stunnel. Here's how you can do it:
+
+// Assuming you’ve configured stunnel as mentioned in the previous steps:
+
+// redis-cli -h 127.0.0.1 -p 6379
+// This command specifies the host (-h) as 127.0.0.1 and the port (-p) as 6379, which is the local port where stunnel is listening and forwarding traffic to the remote Redis server.
+
+// If you have authentication enabled, you can also provide the Redis password:
+
+// redis-cli -h 127.0.0.1 -p 6379 -a YOUR_REDIS_PASSWORD
+// Replace YOUR_REDIS_PASSWORD with your actual Redis password.
+
+// This way, you can use redis-cli to interact with the Redis server through the stunnel setup. If there are any issues, ensure that stunnel is running, the configuration is correct, and there are no firewall issues between your machine and the server.

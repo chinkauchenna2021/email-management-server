@@ -17,5 +17,7 @@ router.put('/:campaignId', CampaignController.updateCampaign);
 router.post('/:campaignId/send', rateLimiter(60, 3), CampaignController.sendCampaign);
 router.get('/:campaignId/stats', CampaignController.getCampaignStats);
 router.post('/:campaignId/retry', rateLimiter(60, 3), CampaignController.retryFailedEmails);
+// Add this route to the existing routes
+router.get('/recent', CampaignController.getRecentCampaigns);
 
 export default router;

@@ -15,6 +15,7 @@ import campaignRoutes from './routes/campaign.routes';
 import templateRoutes from './routes/templates.routes';
 import automationRoutes from './routes/automation.routes';
 import settingsRoutes from './routes/settings.routes';
+import analyticsRoutes from './routes/analytics.routes';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -33,6 +34,7 @@ app.use('/api/email', emailRoutes);
 app.use('/api/campaigns', campaignRoutes);
 app.use('/api/templates', templateRoutes);
 app.use('/api/automations', automationRoutes);
+app.use('/api/analytics', analyticsRoutes);
 app.use('/api/settings', settingsRoutes);
 
 // Health check

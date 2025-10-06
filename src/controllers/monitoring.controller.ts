@@ -39,7 +39,7 @@ export class MonitoringController {
   /**
    * Get job by ID
    */
-  static async getJobById(req: Request, res: Response) {
+  static async getJobById(req: Request, res: Response):Promise<void | any> {
     try {
       const userId = (req as any).user.id;
       const { id } = req.params;

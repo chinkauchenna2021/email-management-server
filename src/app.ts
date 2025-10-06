@@ -31,7 +31,7 @@ app.use('/api/emails', emailRoutes);
 app.use('/api/campaigns', campaignRoutes);
 app.use('/api/analytics', analyticsRoutes); // Add this
 app.use('/api/monitoring', monitoringRoutes);
-
+// Add this route to the existing routes
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });

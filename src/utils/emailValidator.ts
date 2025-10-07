@@ -14,7 +14,7 @@ export class EmailValidator {
   static validateEmail(email: string): ValidationResult {
     const result: ValidationResult = { email, valid: false };
     
-    // Basic syntax validation
+    // Basic syntax validation  
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       result.reason = 'Invalid email format';

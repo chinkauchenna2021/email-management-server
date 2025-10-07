@@ -6,12 +6,12 @@ export class EmailService {
   /**
    * Create a new email list
    */
-  static async createEmailList(userId: string, title: string, description?: string, emails?: string[]) {
+  static async createEmailList(userId: string, name: string, description?: string, emails?: string[]) {
     try {
       const emailList = await prisma.emailList.create({
         data: {
           userId,
-          name: title,
+          name,
           description,
         },
       });

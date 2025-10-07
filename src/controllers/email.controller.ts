@@ -10,13 +10,13 @@ export class EmailController {
   static async createEmailList(req: Request, res: Response): Promise<void | any> {
     try {
       const userId = (req as any).user.id;
-      const { title, description, emails } = req.body;
+      const { name, description, emails } = req.body;
       
-      if (!title) {
+      if (!name) {
         return res.status(400).json({ message: 'List title is required' });
       }
       
-      const emailList = await EmailService.createEmailList(userId, title, description, emails);
+      const emailList = await EmailService.createEmailList(userId, name, description, emails);
       
       res.status(201).json({
         message: 'Email list created successfully',

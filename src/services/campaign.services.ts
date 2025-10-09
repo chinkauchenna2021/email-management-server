@@ -599,4 +599,50 @@ export class CampaignService {
       throw error;
     }
   }
+
+
+  static async sendScheduledCampaign(campaign: any): Promise<void> {
+  try {
+    // Create email send records for each email
+    const emailSends = await prisma.emailSend.createMany({
+      data: campaign.list.emails.map((email: { id: any; }) => ({
+        emailId: email.id,
+        campaignId: campaign.id,
+      })),
+    });
+
+    // Add email sending jobs to queue
+    for (const email of campaign.list.emails) {
+      await emailQueue.add('sendEmail', {
+        campaignId: campaign.id,
+        emailId: email.id,
+        domainId: campaign.domain.id,
+      }, {
+        attempts: 3,
+        backoff: {
+          type: 'exponential',
+          delay: 2000,
+        },
+      });
+    }
+
+    // Update campaign status to SENT after all emails are queued
+    await prisma.campaign.update({
+      where: { id: campaign.id },
+      data: { status: 'SENT' },
+    });
+
+    logger.info(`Campaign ${campaign.id} sent successfully`);
+  } catch (error) {
+    logger.error(`Error sending scheduled campaign ${campaign.id}:`, error);
+    
+    // Mark campaign as failed
+    await prisma.campaign.update({
+      where: { id: campaign.id },
+      data: { status: 'FAILED' },
+    });
+    
+    throw error;
+  }
+}
 }

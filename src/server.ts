@@ -6,6 +6,7 @@ import { connectDB, disconnectDB } from './config/database';
 import { connectRedis, disconnectRedis } from './config/redis';
 import { logger } from './utils/logger';
 import { errorHandler } from './middleware/errorHandler';
+import { CampaignScheduler } from './services/campaignScheduler';
 
 // Import routes
 import authRoutes from './routes/auth.routes';
@@ -45,6 +46,15 @@ app.get('/health', (req, res) => {
 // Error handling
 app.use(errorHandler);
 
+
+
+// Initialize campaign scheduler
+const campaignScheduler = CampaignScheduler.getInstance();
+
+// Initialize pending campaigns on server start
+campaignScheduler.initializePendingCampaigns().catch(error => {
+  logger.error('Failed to initialize pending campaigns:', error);
+});
 // Start server
 const startServer = async () => {
   try {

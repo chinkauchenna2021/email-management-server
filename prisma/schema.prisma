@@ -27,6 +27,7 @@ model User {
   updatedAt DateTime @updatedAt
 
   @@map("users")
+  BulkEmailJob BulkEmailJob[]
 }
 
 model Domain {
@@ -104,6 +105,7 @@ model Campaign {
   updatedAt   DateTime        @updatedAt
 
   @@map("campaigns")
+  BulkEmailJob BulkEmailJob[]
 }
 
 model EmailSend {
@@ -181,6 +183,62 @@ model AutomationExecution {
 
   @@map("automation_executions")
 }
+
+
+
+
+
+
+
+
+
+// Add to your existing Prisma schema
+
+model EmailTracking {
+  id        String   @id @default(cuid())
+  email     String
+  jobId     String
+  messageId String
+  provider  String   // email provider used (nodemailer, resend, mailtrap)
+  status    String   // sent, delivered, opened, clicked, bounced, complained
+  events    Json?    // Array of email events with timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([email, jobId])
+  @@index([jobId])
+  @@index([email])
+  @@index([provider])
+  @@index([status])
+  @@map("email_tracking")
+}
+
+model BulkEmailJob {
+  id           String   @id @default(cuid())
+  campaignId   String
+  userId       String
+  provider     String   // Primary provider for this bulk job
+  status       String   // pending, processing, completed, failed
+  totalEmails  Int
+  processedEmails Int
+  successCount Int
+  failureCount Int
+  scheduledAt  DateTime?
+  startedAt    DateTime?
+  completedAt  DateTime?
+  
+  campaign     Campaign @relation(fields: [campaignId], references: [id])
+  user         User     @relation(fields: [userId], references: [id])
+  
+  @@index([userId])
+  @@index([status])
+  @@index([scheduledAt])
+  @@map("bulk_email_jobs")
+}
+
+
+
+
 
 enum Role {
   USER

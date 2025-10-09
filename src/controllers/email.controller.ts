@@ -11,6 +11,8 @@ export class EmailController {
     try {
       const userId = (req as any).user.id;
       const { name, description, emails } = req.body;
+
+      console.log(name, description , emails , "============Emails===========")
       
       if (!name) {
         return res.status(400).json({ message: 'List title is required' });

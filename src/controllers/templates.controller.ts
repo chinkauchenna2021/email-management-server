@@ -9,7 +9,7 @@ export class TemplateController {
   static async createTemplate(req: Request, res: Response): Promise<void | any> {
     try {
       const userId = (req as any).user.id;
-      const { name, subject, content, category } = req.body;
+      const { name, subject, htmlContent:content, category } = req.body;
       
       if (!name || !subject || !content) {
         return res.status(400).json({ 

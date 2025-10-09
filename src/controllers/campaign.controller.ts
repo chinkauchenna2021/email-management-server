@@ -2,112 +2,129 @@ import { Request, Response } from 'express';
 import { CampaignService } from '../services/campaign.services';
 import { logger } from '../utils/logger';
 import prisma from '../config/database';
+import { CampaignScheduler } from '../services/campaignScheduler';
 
 export class CampaignController {
   /**
    * Create a new campaign
    */
-  static async createCampaign(req: Request, res: Response): Promise<void | any> {
-    try {
-      const userId = (req as any).user.id;
-      const { 
-        name, 
-        subject, 
-        content, 
-        domainId, 
-        listId, 
-        scheduledAt,
-        saveAsDraft = false 
-      } = req.body;
-      
-      if (!name || !subject || !content || !domainId || !listId) {
-        return res.status(400).json({ 
-          message: 'Name, subject, content, domainId, and listId are required' 
-        });
-      }
-      
-      const campaign = await CampaignService.createCampaign(
-        userId,
-        name,
-        subject,
-        content,
-        domainId,
-        listId,
-        scheduledAt ? new Date(scheduledAt) : undefined,
-        saveAsDraft
-      );
-      
-      res.status(201).json({
-        message: 'Campaign created successfully',
-        campaign,
+// Update the createCampaign method in CampaignController
+static async createCampaign(req: Request, res: Response): Promise<void | any> {
+  try {
+    const userId = (req as any).user.id;
+    const { 
+      name, 
+      subject, 
+      content, 
+      domainId, 
+      listId, 
+      scheduledAt,
+      saveAsDraft = false 
+    } = req.body;
+    
+    if (!name || !subject || !content || !domainId || !listId) {
+      return res.status(400).json({ 
+        message: 'Name, subject, content, domainId, and listId are required' 
       });
-    } catch (error) {
-      logger.error('Create campaign error:', error);
-      
-      if (error instanceof Error) {
-        if (error.message === 'Domain not found' || error.message === 'Email list not found') {
-          return res.status(404).json({ message: error.message });
-        }
-        if (error.message === 'Domain is not verified') {
-          return res.status(400).json({ message: error.message });
-        }
-      }
-      
-      res.status(500).json({ message: 'Internal server error' });
     }
-  }
-  
-  /**
-   * Update a campaign
-   */
-  static async updateCampaign(req: Request, res: Response): Promise<void | any> {
-    try {
-      const userId = (req as any).user.id;
-      const { campaignId } = req.params;
-      const { 
-        name, 
-        subject, 
-        content, 
-        domainId, 
-        listId, 
-        scheduledAt,
-        saveAsDraft = false 
-      } = req.body;
-      
-      const campaign = await CampaignService.updateCampaign(
-        userId,
-        campaignId,
-        name,
-        subject,
-        content,
-        domainId,
-        listId,
-        scheduledAt ? new Date(scheduledAt) : undefined,
-        saveAsDraft
-      );
-      
-      res.json({
-        message: 'Campaign updated successfully',
-        campaign,
-      });
-    } catch (error) {
-      logger.error('Update campaign error:', error);
-      
-      if (error instanceof Error) {
-        if (error.message === 'Campaign not found' || 
-            error.message === 'Domain not found' || 
-            error.message === 'Email list not found') {
-          return res.status(404).json({ message: error.message });
-        }
-        if (error.message === 'Domain is not verified' || 
-            error.message === 'Cannot update a campaign that has already been sent') {
-          return res.status(400).json({ message: error.message });
-        }
-      }
-      
-      res.status(500).json({ message: 'Internal server error' });
+    
+    const campaign = await CampaignService.createCampaign(
+      userId,
+      name,
+      subject,
+      content,
+      domainId,
+      listId,
+      scheduledAt ? new Date(scheduledAt) : undefined,
+      saveAsDraft
+    );
+
+    // If scheduled for future, add to scheduler
+    if (scheduledAt && !saveAsDraft) {
+      const scheduler = CampaignScheduler.getInstance();
+      await scheduler.scheduleCampaign(campaign.id, new Date(scheduledAt));
     }
+    
+    res.status(201).json({
+      message: 'Campaign created successfully',
+      campaign,
+    });
+  } catch (error) {
+    logger.error('Create campaign error:', error);
+    
+    if (error instanceof Error) {
+      if (error.message === 'Domain not found' || error.message === 'Email list not found') {
+        return res.status(404).json({ message: error.message });
+      }
+      if (error.message === 'Domain is not verified') {
+        return res.status(400).json({ message: error.message });
+      }
+    }
+    
+    res.status(500).json({ message: 'Internal server error' });
   }
+}
+
+// Update the updateCampaign method
+static async updateCampaign(req: Request, res: Response): Promise<void | any> {
+  try {
+    const userId = (req as any).user.id;
+    const { campaignId } = req.params;
+    const { 
+      name, 
+      subject, 
+      content, 
+      domainId, 
+      listId, 
+      scheduledAt,
+      saveAsDraft = false 
+    } = req.body;
+    
+    const campaign = await CampaignService.updateCampaign(
+      userId,
+      campaignId,
+      name,
+      subject,
+      content,
+      domainId,
+      listId,
+      scheduledAt ? new Date(scheduledAt) : undefined,
+      saveAsDraft
+    );
+
+    // Handle scheduling updates
+    const scheduler = CampaignScheduler.getInstance();
+    
+    if (scheduledAt && !saveAsDraft) {
+      // Reschedule the campaign
+      await scheduler.scheduleCampaign(campaignId, new Date(scheduledAt));
+    } else {
+      // Unschedule if no longer scheduled
+      scheduler.unscheduleCampaign(campaignId);
+    }
+    
+    res.json({
+      message: 'Campaign updated successfully',
+      campaign,
+    });
+  } catch (error) {
+    logger.error('Update campaign error:', error);
+    
+    if (error instanceof Error) {
+      if (error.message === 'Campaign not found' || 
+          error.message === 'Domain not found' || 
+          error.message === 'Email list not found') {
+        return res.status(404).json({ message: error.message });
+      }
+      if (error.message === 'Domain is not verified' || 
+          error.message === 'Cannot update a campaign that has already been sent') {
+        return res.status(400).json({ message: error.message });
+      }
+    }
+    
+    res.status(500).json({ message: 'Internal server error' });
+  }
+}
   
   /**
    * Get user campaigns

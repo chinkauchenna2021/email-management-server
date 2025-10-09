@@ -6,38 +6,66 @@ export class EmailService {
   /**
    * Create a new email list
    */
-  static async createEmailList(userId: string, name: string, description?: string, emails?: string[]) {
-    try {
-      const emailList = await prisma.emailList.create({
-        data: {
-          userId,
-          name,
-          description,
-        },
-      });
-      
-      // If emails are provided, add them to the list
-      if (emails && emails.length > 0) {
-        await EmailService.addEmailsToList(userId, emailList.id, emails);
+/**
+ * Create a new email list
+ */
+      static async createEmailList(userId: string, name: string, description?: string, emails?: string[]) {
+        try {
+          // Use a transaction to ensure atomicity
+          const result = await prisma.$transaction(async (tx) => {
+            // Create the email list
+            const emailList = await tx.emailList.create({
+              data: {
+                userId,
+                name,
+                description,
+              },
+            });
+            
+            let addedEmailsCount = 0;
+            
+            // If emails are provided, add them to the list
+            if (emails && emails.length > 0) {
+              // Validate emails
+              const validationResults = EmailValidator.validateEmailList(emails);
+              
+              // Filter valid emails
+              const validEmails = validationResults
+                .filter(result => result.valid)
+                .map(result => result.email);
+              
+              // Remove duplicates
+              const uniqueEmails = [...new Set(validEmails)];
+              
+              // Create email records
+              if (uniqueEmails.length > 0) {
+                await tx.email.createMany({
+                  data: uniqueEmails.map(address => ({
+                    address,
+                    listId: emailList.id,
+                    valid: true,
+                  })),
+                });
+                addedEmailsCount = uniqueEmails.length;
+              }
+            }
+            
+            // Return the list with count
+            return {
+              ...emailList,
+              _count: {
+                emails: addedEmailsCount,
+              },
+            };
+          });
+          
+          return result;
+        } catch (error) {
+          logger.error('Create email list error:', error);
+          throw error;
+        }
       }
-      
-      // Get the updated list with email count
-      const listWithCount = await prisma.emailList.findUnique({
-        where: { id: emailList.id },
-        include: {
-          _count: {
-            select: { emails: true },
-          },
-        },
-      });
-      
-      return listWithCount;
-    } catch (error) {
-      logger.error('Create email list error:', error);
-      throw error;
-    }
-  }
-  
+        
   /**
    * Update an email list
    */
@@ -332,4 +360,5 @@ export class EmailService {
       throw error;
     }
   }
+  
 }

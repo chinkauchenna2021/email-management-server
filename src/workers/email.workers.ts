@@ -173,36 +173,78 @@
 
 
 
-
-// workers/email.worker.ts
 import { Worker, Job } from 'bullmq';
 import prisma from '../config/database';
 import { EmailProviderService, EmailData } from '../services/emailProvider.services';
+import { EmailProviderFactory } from '../providers/email.factory';
 import { logger } from '../utils/logger';
 import { emailQueue } from '../services/campaign.services';
 
 // Initialize email provider service
 const emailProviderService = new EmailProviderService();
 
+// Helper function to get provider configuration for domain
+const configureProviderForDomain = async (domainId: string) => {
+  const domain = await prisma.domain.findUnique({
+    where: { id: domainId }
+  });
+  
+  if (!domain) throw new Error('Domain not found');
+  
+  const providerName = domain.smtpProvider?.toLowerCase() || 'nodemailer';
+  
+  let providerConfig;
+  
+  if (providerName === 'nodemailer' && domain.smtpHost) {
+    // Custom SMTP configuration
+    providerConfig = {
+      name: 'nodemailer',
+      transport: {
+        host: domain.smtpHost,
+        port: domain.smtpPort || 587,
+        secure: domain.smtpSecurity === 'SSL' || domain.smtpSecurity === 'TLS',
+        auth: domain.smtpUsername ? {
+          user: domain.smtpUsername,
+          pass: domain.smtpPassword
+        } : undefined
+      },
+      defaultFrom: `noreply@${domain.domain}`
+    };
+  } else if (providerName === 'resend') {
+    // Resend configuration
+    providerConfig = {
+      name: 'resend',
+      apiKey: process.env.RESEND_API_KEY,
+      defaultFrom: `noreply@${domain.domain}`
+    };
+  } else if (providerName === 'mailtrap') {
+    // Mailtrap configuration
+    providerConfig = {
+      name: 'mailtrap',
+      apiKey: process.env.MAILTRAP_API_KEY,
+      defaultFrom: `noreply@${domain.domain}`
+    };
+  } else {
+    throw new Error(`Unsupported or misconfigured provider: ${providerName}`);
+  }
+  
+  return EmailProviderFactory.createProvider(providerConfig);
+};
+
 // Create email worker
 const emailWorker = new Worker(
   'emailQueue',
   async (job: Job) => {
-    const { campaignId, emailId, domainId, isRetry = false, providerName } = job.data;
+    const { campaignId, emailId, domainId, isRetry = false } = job.data;
     
     try {
       logger.info(`Processing email job: ${job.id}, Campaign: ${campaignId}, Email: ${emailId}`);
       
-      // Get campaign details with domain and provider preference
+      // Get campaign details with domain
       const campaign = await prisma.campaign.findUnique({
         where: { id: campaignId },
         include: {
           domain: true,
-          user: {
-            include: {
-              settings: true,
-            },
-          },
         },
       });
       
@@ -231,16 +273,9 @@ const emailWorker = new Worker(
         throw new Error('Email send record not found');
       }
       
-      // Update status to SENDING
-      await prisma.emailSend.update({
-        where: { id: emailSend.id },
-        data: { status: 'SENT' },
-      });
-      
-      // Determine provider to use
-      const finalProviderName = providerName || 
-                               campaign.domain.smtpProvider || 
-                               emailProviderService.getDefaultProvider();
+      // Configure provider based on domain SMTP settings
+      const provider = await configureProviderForDomain(domainId);
+      const providerName = campaign.domain.smtpProvider?.toLowerCase() || 'nodemailer';
       
       // Prepare email data
       const emailData: EmailData = {
@@ -250,11 +285,11 @@ const emailWorker = new Worker(
         html: campaign.content,
       };
       
-      // Send email with selected provider
-      const result = await emailProviderService.sendEmail(emailData, finalProviderName);
+      // Send email with domain-specific provider
+      const result = await provider.send(emailData);
       
-      if (result.success) {
-        // Update status to DELIVERED and track provider
+      if (result.messageId) {
+        // Update status to DELIVERED
         await prisma.emailSend.update({
           where: { id: emailSend.id },
           data: {
@@ -273,25 +308,25 @@ const emailWorker = new Worker(
           update: {
             status: 'sent',
             messageId: result.messageId,
-            provider: finalProviderName,
+            provider: providerName,
           },
           create: {
             email: email.address,
             jobId: job.id!,
             messageId: result.messageId || 'unknown',
-            provider: finalProviderName,
+            provider: providerName,
             status: 'sent',
             events: [
               {
                 type: 'sent',
                 timestamp: new Date(),
-                data: { provider: finalProviderName },
+                data: { provider: providerName },
               },
             ],
           },
         });
         
-        logger.info(`Email sent successfully to ${email.address} using ${finalProviderName}`);
+        logger.info(`Email sent successfully to ${email.address} using ${providerName}`);
         
         // Update domain reputation (simplified)
         await prisma.domain.update({
@@ -305,7 +340,7 @@ const emailWorker = new Worker(
         
         return { 
           success: true, 
-          provider: finalProviderName,
+          provider: providerName,
           messageId: result.messageId 
         };
       } else {
@@ -314,7 +349,7 @@ const emailWorker = new Worker(
           where: { id: emailSend.id },
           data: {
             status: 'FAILED',
-            bounceReason: result.error,
+            bounceReason: 'Failed to get message ID from provider',
           },
         });
         
@@ -328,25 +363,25 @@ const emailWorker = new Worker(
           },
           update: {
             status: 'bounced',
-            provider: finalProviderName,
+            provider: providerName,
           },
           create: {
             email: email.address,
             jobId: job.id!,
             messageId: 'failed',
-            provider: finalProviderName,
+            provider: providerName,
             status: 'bounced',
             events: [
               {
                 type: 'bounced',
                 timestamp: new Date(),
-                data: { error: result.error, provider: finalProviderName },
+                data: { error: 'No message ID returned', provider: providerName },
               },
             ],
           },
         });
         
-        logger.error(`Failed to send email to ${email.address} using ${finalProviderName}: ${result.error}`);
+        logger.error(`Failed to send email to ${email.address} using ${providerName}: No message ID returned`);
         
         // Update domain reputation
         await prisma.domain.update({
@@ -358,7 +393,7 @@ const emailWorker = new Worker(
           },
         });
         
-        throw new Error(result.error);
+        throw new Error('Failed to send email - no message ID returned from provider');
       }
     } catch (error) {
       logger.error(`Email job failed: ${job.id}`, error);

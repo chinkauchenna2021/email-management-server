@@ -18,6 +18,7 @@ static async createCampaign(req: Request, res: Response): Promise<void | any> {
       content, 
       domainId, 
       listId, 
+      templateId,
       scheduledAt,
       saveAsDraft = false 
     } = req.body;
@@ -35,6 +36,7 @@ static async createCampaign(req: Request, res: Response): Promise<void | any> {
       content,
       domainId,
       listId,
+      templateId,
       scheduledAt ? new Date(scheduledAt) : undefined,
       saveAsDraft
     );
@@ -53,10 +55,10 @@ static async createCampaign(req: Request, res: Response): Promise<void | any> {
     logger.error('Create campaign error:', error);
     
     if (error instanceof Error) {
-      if (error.message === 'Domain not found' || error.message === 'Email list not found') {
+      if (error.message === 'Domain not found' || error.message === 'Email list not found' || error.message === 'Template not found') {
         return res.status(404).json({ message: error.message });
       }
-      if (error.message === 'Domain is not verified') {
+      if (error.message === 'Domain is not verified' || error.message === 'Domain must have SMTP configuration to send emails') {
         return res.status(400).json({ message: error.message });
       }
     }
@@ -76,6 +78,7 @@ static async updateCampaign(req: Request, res: Response): Promise<void | any> {
       content, 
       domainId, 
       listId, 
+      templateId,
       scheduledAt,
       saveAsDraft = false 
     } = req.body;
@@ -88,6 +91,7 @@ static async updateCampaign(req: Request, res: Response): Promise<void | any> {
       content,
       domainId,
       listId,
+      templateId,
       scheduledAt ? new Date(scheduledAt) : undefined,
       saveAsDraft
     );
@@ -113,11 +117,13 @@ static async updateCampaign(req: Request, res: Response): Promise<void | any> {
     if (error instanceof Error) {
       if (error.message === 'Campaign not found' || 
           error.message === 'Domain not found' || 
-          error.message === 'Email list not found') {
+          error.message === 'Email list not found' ||
+          error.message === 'Template not found') {
         return res.status(404).json({ message: error.message });
       }
       if (error.message === 'Domain is not verified' || 
-          error.message === 'Cannot update a campaign that has already been sent') {
+          error.message === 'Cannot update a campaign that has already been sent' ||
+          error.message === 'Domain must have SMTP configuration to send emails') {
         return res.status(400).json({ message: error.message });
       }
     }
@@ -125,7 +131,6 @@ static async updateCampaign(req: Request, res: Response): Promise<void | any> {
     res.status(500).json({ message: 'Internal server error' });
   }
 }
-  
   /**
    * Get user campaigns
    */

@@ -6,51 +6,71 @@ export class DomainService {
   /**
    * Add a new domain with SMTP settings
    */
-  static async addDomain(userId: string, domain: string, smtpSettings: any) {
-    try {
-      // Check if domain already exists for this user
-      const existingDomain = await prisma.domain.findFirst({
-        where: { userId, domain },
-      });
-      
-      if (existingDomain) {
-        throw new Error('Domain already exists');
-      }
-      
-      // Generate DNS records
-      const dnsRecords = DNSVerifier.generateDNSRecords(domain);
-      
-      // Create domain record with SMTP settings
-      const newDomain = await prisma.domain.create({
-        data: {
-          userId,
-          domain,
-          dkimKey: dnsRecords.dkim,
-          spfRecord: dnsRecords.spf,
-          dmarcRecord: dnsRecords.dmarc,
-          smtpProvider: smtpSettings.provider,
-          smtpHost: smtpSettings.host,
-          smtpPort: smtpSettings.port,
-          smtpSecurity: smtpSettings.security,
-          smtpUsername: smtpSettings.username,
-          smtpPassword: smtpSettings.password,
-          dailyLimit: smtpSettings.dailyLimit,
-          enableDomainWarmup: smtpSettings.enableDomainWarmup || false,
-          testEmail: smtpSettings.testEmail,
-          textMessage: smtpSettings.textMessage,
-        },
-      });
-      
-      return {
-        domain: newDomain,
-        dnsRecords,
-        message: 'Domain added successfully. Please add the DNS records to your domain provider.',
-      };
-    } catch (error) {
-      logger.error('Add domain error:', error);
-      throw error;
+static async addDomain(userId: string, domain: string, smtpSettings: any) {
+  try {
+    // Check if domain already exists for this user
+    const existingDomain = await prisma.domain.findFirst({
+      where: { userId, domain },
+    });
+    
+    if (existingDomain) {
+      throw new Error('Domain already exists');
     }
+    
+    // Validate SMTP settings based on provider type
+    if (smtpSettings.provider) {
+      if (smtpSettings.provider.toLowerCase() === 'nodemailer') {
+        // Validate custom SMTP settings
+        if (!smtpSettings.host || !smtpSettings.port) {
+          throw new Error('Host and port are required for custom SMTP');
+        }
+      } else if (smtpSettings.provider.toLowerCase() === 'resend') {
+        // For Resend, we don't need SMTP credentials, just API key in env
+        if (!process.env.RESEND_API_KEY) {
+          throw new Error('RESEND_API_KEY environment variable is required for Resend provider');
+        }
+      } else if (smtpSettings.provider.toLowerCase() === 'mailtrap') {
+        // For Mailtrap, we need API key in env
+        if (!process.env.MAILTRAP_API_KEY) {
+          throw new Error('MAILTRAP_API_KEY environment variable is required for Mailtrap provider');
+        }
+      }
+    }
+    
+    // Generate DNS records
+    const dnsRecords = DNSVerifier.generateDNSRecords(domain);
+    
+    // Create domain record with SMTP settings
+    const newDomain = await prisma.domain.create({
+      data: {
+        userId,
+        domain,
+        dkimKey: dnsRecords.dkim,
+        spfRecord: dnsRecords.spf,
+        dmarcRecord: dnsRecords.dmarc,
+        smtpProvider: smtpSettings.provider,
+        smtpHost: smtpSettings.host,
+        smtpPort: smtpSettings.port,
+        smtpSecurity: smtpSettings.security,
+        smtpUsername: smtpSettings.username,
+        smtpPassword: smtpSettings.password,
+        dailyLimit: smtpSettings.dailyLimit,
+        enableDomainWarmup: smtpSettings.enableDomainWarmup || false,
+        testEmail: smtpSettings.testEmail,
+        textMessage: smtpSettings.textMessage,
+      },
+    });
+    
+    return {
+      domain: newDomain,
+      dnsRecords,
+      message: 'Domain added successfully. Please add the DNS records to your domain provider.',
+    };
+  } catch (error) {
+    logger.error('Add domain error:', error);
+    throw error;
   }
+}
   
   /**
    * Update domain SMTP settings

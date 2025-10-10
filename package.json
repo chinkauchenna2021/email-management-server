@@ -2,10 +2,19 @@
   "name": "email-management-system",
   "version": "1.0.0",
   "description": "",
-  "main": "dist/server.js",
+  "main": "dist/app.js",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "bcrypt"
+    ]
+  },
+  "prisma": {
+    "seed": "ts-node ./prisma/seed.ts"
+  },
+  "packageManager": "pnpm@10.14.0",
   "scripts": {
     "build": "tsc ",
-    "start": "node dist/server.js",
+    "start": "node dist/app.js",
     "dev": "node src/server.ts",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
@@ -32,7 +41,6 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "packageManager": "pnpm@10.14.0",
   "dependencies": {
     "@prisma/client": "6.5.0",
     "@sendgrid/mail": "^8.1.6",

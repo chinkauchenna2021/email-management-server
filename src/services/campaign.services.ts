@@ -8,11 +8,18 @@ export const emailQueue = new Queue("emailQueue", {
   connection: {
     host: process.env.REDIS_HOST || "127.0.0.1",
     port: Number(process.env.REDIS_PORT) || 6379,
-    // username: process.env.REDIS_USERNAME,
-    // password: process.env.REDIS_PASSWORD,
+    username: process.env.REDIS_USERNAME,
+    password: process.env.REDIS_PASSWORD,
+
   },
 });
 
+// redis-cli --tls -u redis://default:AVf5AAIncDI5OTc2ZWI3ZDA4Y2Q0OTcwYmNiOWViYmU2MzdhODk5MnAyMjI1MjE@touched-falcon-22521.upstash.io:6379
+  //   host: "fly-withered-wildflower-4438.upstash.io",
+  // port: 6379,
+  // username: "default",
+  // password: "******",
+  // family: 6,
 export class CampaignService {
   /**
    * Create a new campaign

@@ -15,7 +15,7 @@
   "scripts": {
     "build": "tsc ",
     "start": "node dist/app.js",
-    "dev": "node src/server.ts",
+    "dev": "node src/app.ts",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",

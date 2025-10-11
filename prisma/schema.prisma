@@ -1,72 +1,69 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL") // For migrations
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  password  String
-  name      String?
-  role      Role     @default(USER)
-  domains   Domain[]
-  lists     EmailList[]
-  campaigns Campaign[]
-  settings  UserSetting?
-  templates EmailTemplate[]
-  automations Automation[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String          @id @default(cuid())
+  email        String          @unique
+  password     String
+  name         String?
+  role         Role            @default(USER)
+  domains      Domain[]
+  lists        EmailList[]
+  campaigns    Campaign[]
+  settings     UserSetting?
+  templates    EmailTemplate[]
+  automations  Automation[]
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  BulkEmailJob BulkEmailJob[]
 
   @@map("users")
-  BulkEmailJob BulkEmailJob[]
 }
 
 model Domain {
-  id               String      @id @default(cuid())
-  userId           String
-  domain           String
-  dkimKey          String?
-  spfRecord        String?
-  dmarcRecord      String?
-  verified         Boolean     @default(false)
-  reputation       Float       @default(0) // Domain reputation score
-  smtpProvider     String?     // SMTP provider name
-  smtpHost         String?     // SMTP host
-  smtpPort         Int?        // SMTP port
-  smtpSecurity     String?     // SMTP security (SSL/TLS/None)
-  smtpUsername     String?     // SMTP username
-  smtpPassword     String?     // SMTP password
-  dailyLimit       Int?        // Daily email limit
-  enableDomainWarmup Boolean   @default(false) // Enable domain warmup
-  testEmail        String?     // Test email address
-  textMessage      String?     // Text message for verification
-  user             User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  campaigns        Campaign[]
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
+  id                 String     @id @default(cuid())
+  userId             String
+  domain             String
+  dkimKey            String?
+  spfRecord          String?
+  dmarcRecord        String?
+  verified           Boolean    @default(false)
+  reputation         Float      @default(0) // Domain reputation score
+  smtpProvider       String? // SMTP provider name
+  smtpHost           String? // SMTP host
+  smtpPort           Int? // SMTP port
+  smtpSecurity       String? // SMTP security (SSL/TLS/None)
+  smtpUsername       String? // SMTP username
+  smtpPassword       String? // SMTP password
+  dailyLimit         Int? // Daily email limit
+  enableDomainWarmup Boolean    @default(false) // Enable domain warmup
+  testEmail          String? // Test email address
+  textMessage        String? // Text message for verification
+  user               User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaigns          Campaign[]
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
 
   @@map("domains")
 }
 
 model EmailList {
-  id          String      @id @default(cuid())
+  id          String     @id @default(cuid())
   name        String
-  description String?     // Description of the email list
+  description String? // Description of the email list
   userId      String
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   emails      Email[]
   campaigns   Campaign[]
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 
   @@map("email_lists")
 }
@@ -85,68 +82,68 @@ model Email {
 }
 
 model Campaign {
-  id          String          @id @default(cuid())
-  name        String
-  subject     String
-  content     String
-  userId      String
-  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  domainId    String
-  domain      Domain          @relation(fields: [domainId], references: [id], onDelete: Cascade)
-  listId      String
-  list        EmailList       @relation(fields: [listId], references: [id], onDelete: Cascade)
-  templateId  String?         // Reference to email template used
-  template    EmailTemplate?  @relation(fields: [templateId], references: [id])
-  sends       EmailSend[]
-  status      CampaignStatus  @default(DRAFT)
-  scheduledAt DateTime?
-  sentAt      DateTime?
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  id           String         @id @default(cuid())
+  name         String
+  subject      String
+  content      String
+  userId       String
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  domainId     String
+  domain       Domain         @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  listId       String
+  list         EmailList      @relation(fields: [listId], references: [id], onDelete: Cascade)
+  templateId   String? // Reference to email template used
+  template     EmailTemplate? @relation(fields: [templateId], references: [id])
+  sends        EmailSend[]
+  status       CampaignStatus @default(DRAFT)
+  scheduledAt  DateTime?
+  sentAt       DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  BulkEmailJob BulkEmailJob[]
 
   @@map("campaigns")
-  BulkEmailJob BulkEmailJob[]
 }
 
 model EmailSend {
-  id           String        @id @default(cuid())
+  id           String     @id @default(cuid())
   emailId      String
-  email        Email         @relation(fields: [emailId], references: [id], onDelete: Cascade)
+  email        Email      @relation(fields: [emailId], references: [id], onDelete: Cascade)
   campaignId   String
-  campaign     Campaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  status       SendStatus    @default(PENDING)
+  campaign     Campaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  status       SendStatus @default(PENDING)
   openedAt     DateTime?
   clickedAt    DateTime?
   bouncedAt    DateTime?
   bounceReason String?
-  complainedAt DateTime?     // When the user complained
-  retries      Int           @default(0)
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  complainedAt DateTime? // When the user complained
+  retries      Int        @default(0)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 
   @@map("email_sends")
 }
 
 model EmailTemplate {
-  id          String   @id @default(cuid())
-  name        String
-  subject     String
-  content     String
-  category    String?  // Template category
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  campaigns   Campaign[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String     @id @default(cuid())
+  name      String
+  subject   String
+  content   String
+  category  String? // Template category
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaigns Campaign[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 
   @@map("email_templates")
 }
 
 model UserSetting {
-  id       String   @id @default(cuid())
-  userId   String   @unique
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  settings Json     // User settings as JSON
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  settings  Json // User settings as JSON
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -154,43 +151,35 @@ model UserSetting {
 }
 
 model Automation {
-  id          String   @id @default(cuid())
+  id          String                @id @default(cuid())
   name        String
   description String?
-  trigger     String   // Trigger type (e.g., "time", "event")
-  conditions  Json     // Conditions as JSON
-  actions     Json     // Actions as JSON
-  isActive    Boolean  @default(false)
+  trigger     String // Trigger type (e.g., "time", "event")
+  conditions  Json // Conditions as JSON
+  actions     Json // Actions as JSON
+  isActive    Boolean               @default(false)
   userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
   executions  AutomationExecution[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
 
   @@map("automations")
 }
 
 model AutomationExecution {
-  id           String              @id @default(cuid())
+  id           String          @id @default(cuid())
   automationId String
-  automation   Automation          @relation(fields: [automationId], references: [id], onDelete: Cascade)
-  status       ExecutionStatus     @default(PENDING)
+  automation   Automation      @relation(fields: [automationId], references: [id], onDelete: Cascade)
+  status       ExecutionStatus @default(PENDING)
   startedAt    DateTime?
   completedAt  DateTime?
-  result       Json?               // Execution result as JSON
-  createdAt    DateTime            @default(now())
-  updatedAt    DateTime            @updatedAt
+  result       Json? // Execution result as JSON
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
 
   @@map("automation_executions")
 }
-
-
-
-
-
-
-
-
 
 // Add to your existing Prisma schema
 
@@ -199,9 +188,9 @@ model EmailTracking {
   email     String
   jobId     String
   messageId String
-  provider  String   // email provider used (nodemailer, resend, mailtrap)
-  status    String   // sent, delivered, opened, clicked, bounced, complained
-  events    Json?    // Array of email events with timestamps
+  provider  String // email provider used (nodemailer, resend, mailtrap)
+  status    String // sent, delivered, opened, clicked, bounced, complained
+  events    Json? // Array of email events with timestamps
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -214,31 +203,27 @@ model EmailTracking {
 }
 
 model BulkEmailJob {
-  id           String   @id @default(cuid())
-  campaignId   String
-  userId       String
-  provider     String   // Primary provider for this bulk job
-  status       String   // pending, processing, completed, failed
-  totalEmails  Int
+  id              String    @id @default(cuid())
+  campaignId      String
+  userId          String
+  provider        String // Primary provider for this bulk job
+  status          String // pending, processing, completed, failed
+  totalEmails     Int
   processedEmails Int
-  successCount Int
-  failureCount Int
-  scheduledAt  DateTime?
-  startedAt    DateTime?
-  completedAt  DateTime?
-  
-  campaign     Campaign @relation(fields: [campaignId], references: [id])
-  user         User     @relation(fields: [userId], references: [id])
-  
+  successCount    Int
+  failureCount    Int
+  scheduledAt     DateTime?
+  startedAt       DateTime?
+  completedAt     DateTime?
+
+  campaign Campaign @relation(fields: [campaignId], references: [id])
+  user     User     @relation(fields: [userId], references: [id])
+
   @@index([userId])
   @@index([status])
   @@index([scheduledAt])
   @@map("bulk_email_jobs")
 }
-
-
-
-
 
 enum Role {
   USER
@@ -247,7 +232,7 @@ enum Role {
 
 enum CampaignStatus {
   DRAFT
-  READY       // Ready to send
+  READY // Ready to send
   SCHEDULED
   SENDING
   SENT
@@ -264,7 +249,7 @@ enum SendStatus {
   BOUNCED
   FAILED
   RETRYING
-  COMPLAINED  // User marked as spam
+  COMPLAINED // User marked as spam
 }
 
 enum ExecutionStatus {

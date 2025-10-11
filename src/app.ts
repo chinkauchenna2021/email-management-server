@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
-import { connectDB, disconnectDB } from './config/database';
+// import { connectDB, disconnectDB } from './config/database';
 import { connectRedis, disconnectRedis } from './config/redis';
 import { logger } from './utils/logger';
 import { errorHandler } from './middleware/errorHandler';
@@ -59,7 +59,7 @@ campaignScheduler.initializePendingCampaigns().catch(error => {
 const startServer = async () => {
   try {
     // Connect to database
-    await connectDB();
+    // await connectDB();
     logger.info('Database connected successfully');
     
     // Connect to Redis
@@ -78,7 +78,7 @@ const startServer = async () => {
 process.on('SIGINT', async () => {
   logger.info('SIGINT received, shutting down gracefully');
   try {
-    await disconnectDB();
+    // await disconnectDB();
     await disconnectRedis();
     logger.info('Database and Redis connections closed');
     process.exit(0);

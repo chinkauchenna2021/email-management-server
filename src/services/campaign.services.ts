@@ -1,4 +1,4 @@
-import prisma from "../config/database";
+import {prisma} from "../config/database";
 import { logger } from "../utils/logger";
 import { Queue } from "bullmq";
 import redisClient from "../config/redis";

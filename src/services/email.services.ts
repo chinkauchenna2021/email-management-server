@@ -1,4 +1,4 @@
-import prisma from '../config/database';
+import {prisma} from '../config/database';
 import { EmailValidator } from '../utils/emailValidator';
 import { logger } from '../utils/logger';
 

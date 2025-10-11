@@ -1,7 +1,7 @@
 import cron from 'node-cron';
 import { CampaignService } from './campaign.services';
 import { logger } from '../utils/logger';
-import prisma from '../config/database';
+import {prisma} from '../config/database';
 
 export class CampaignScheduler {
   private static instance: CampaignScheduler;

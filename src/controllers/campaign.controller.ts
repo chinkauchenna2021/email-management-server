@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { CampaignService } from '../services/campaign.services';
 import { logger } from '../utils/logger';
-import prisma from '../config/database';
+import {prisma} from '../config/database';
 import { CampaignScheduler } from '../services/campaignScheduler';
 
 export class CampaignController {

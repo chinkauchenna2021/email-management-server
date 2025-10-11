@@ -1,4 +1,4 @@
-import prisma from '../config/database';
+import {prisma} from '../config/database';
 import { DNSVerifier } from '../utils/dnsVerifier';
 import { logger } from '../utils/logger';
 

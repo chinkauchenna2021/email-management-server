@@ -174,7 +174,7 @@
 
 
 import { Worker, Job } from 'bullmq';
-import prisma from '../config/database';
+import {prisma} from '../config/database';
 import { EmailProviderService, EmailData } from '../services/emailProvider.services';
 import { EmailProviderFactory } from '../providers/email.factory';
 import { logger } from '../utils/logger';

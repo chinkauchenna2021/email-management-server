@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import prisma from '../config/database';
+import {prisma} from '../config/database';
 import { logger } from '../utils/logger';
 import {config} from 'dotenv';
 config();

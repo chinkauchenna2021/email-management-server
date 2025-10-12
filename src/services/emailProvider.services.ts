@@ -392,7 +392,7 @@ export class EmailProviderService {
   getDefaultProvider(): string {
     return this.defaultProvider;
   }
-
+ 
   async validateProvider(providerName: string): Promise<boolean> {
     const provider = this.providers.get(providerName);
     if (!provider) return false;

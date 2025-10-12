@@ -7,6 +7,8 @@ import { connectRedis, disconnectRedis } from './config/redis';
 import { logger } from './utils/logger';
 import { errorHandler } from './middleware/errorHandler';
 import { CampaignScheduler } from './services/campaignScheduler';
+import { databaseMonitorService } from './services/databaseMonitor.services';
+import emailWorker from './workers/email.workers';
 
 // Import routes
 import authRoutes from './routes/auth.routes';
@@ -20,6 +22,10 @@ import analyticsRoutes from './routes/analytics.routes';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+
+// Start the database monitoring
+databaseMonitorService.startMonitoring();
 
 // Middleware
 app.use(helmet());
@@ -75,18 +81,36 @@ const startServer = async () => {
 };
 
 // Handle graceful shutdown
-process.on('SIGINT', async () => {
-  logger.info('SIGINT received, shutting down gracefully');
-  try {
-    // await disconnectDB();
-    await disconnectRedis();
-    logger.info('Database and Redis connections closed');
-    process.exit(0);
-  } catch (error) {
-    logger.error('Error during shutdown:', error);
-    process.exit(1);
-  }
+process.on('SIGTERM', async () => {
+  logger.info('SIGTERM received, shutting down gracefully...');
+  // await disconnectDB();
+  await disconnectRedis();
+  await emailWorker.close();
+  process.exit(0);
 });
+
+process.on('SIGINT', async () => {
+  logger.info('SIGINT received, shutting down gracefully...');
+  await disconnectRedis();
+  await emailWorker.close();
+  process.exit(0);
+});
+
+
+
+// process.on('SIGINT', async () => {
+//   logger.info('SIGINT received, shutting down gracefully');
+//   try {
+//     // await disconnectDB();
+//     await disconnectRedis();
+//     logger.info('Database and Redis connections closed');
+//     await emailWorker.close();
+//     process.exit(0);
+//   } catch (error) {
+//     logger.error('Error during shutdown:', error);
+//     process.exit(1);
+//   }
+// });
 
 startServer();
 

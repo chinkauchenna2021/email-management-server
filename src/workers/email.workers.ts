@@ -173,9 +173,8 @@
 
 
 
-// workers/emailWorker.ts
 import { Worker, Job } from 'bullmq';
-import { prisma } from '../config/database';
+import {prisma} from '../config/database';
 import { EmailProviderService, EmailData } from '../services/emailProvider.services';
 import { EmailProviderFactory } from '../providers/email.factory';
 import { logger } from '../utils/logger';
@@ -239,7 +238,7 @@ const emailWorker = new Worker(
     const { campaignId, emailId, domainId, isRetry = false } = job.data;
     
     try {
-      logger.info(`Processing email job: ${job.id}, Campaign: ${campaignId}, Email: ${emailId}, Retry: ${isRetry}`);
+      logger.info(`Processing email job: ${job.id}, Campaign: ${campaignId}, Email: ${emailId}`);
       
       // Get campaign details with domain
       const campaign = await prisma.campaign.findUnique({
@@ -274,14 +273,6 @@ const emailWorker = new Worker(
         throw new Error('Email send record not found');
       }
       
-      // Update status to SENDING if it's PENDING or RETRYING
-      if (emailSend.status === 'PENDING' || emailSend.status === 'RETRYING') {
-        await prisma.emailSend.update({
-          where: { id: emailSend.id },
-          data: { status: 'PENDING' },
-        });
-      }
-      
       // Configure provider based on domain SMTP settings
       const provider = await configureProviderForDomain(domainId);
       const providerName = campaign.domain.smtpProvider?.toLowerCase() || 'nodemailer';
@@ -298,11 +289,11 @@ const emailWorker = new Worker(
       const result = await provider.send(emailData);
       
       if (result.messageId) {
-        // Update status to SENT
+        // Update status to DELIVERED
         await prisma.emailSend.update({
           where: { id: emailSend.id },
           data: {
-            status: 'SENT',
+            status: 'DELIVERED',
           },
         });
         
@@ -334,9 +325,6 @@ const emailWorker = new Worker(
             ],
           },
         });
-        
-        // Update bulk email job stats
-        await updateBulkJobStats(campaignId, true);
         
         logger.info(`Email sent successfully to ${email.address} using ${providerName}`);
         
@@ -393,9 +381,6 @@ const emailWorker = new Worker(
           },
         });
         
-        // Update bulk email job stats
-        await updateBulkJobStats(campaignId, false);
-        
         logger.error(`Failed to send email to ${email.address} using ${providerName}: No message ID returned`);
         
         // Update domain reputation
@@ -430,9 +415,6 @@ const emailWorker = new Worker(
               bounceReason: error instanceof Error ? error.message : 'Unknown error',
             },
           });
-          
-          // Update bulk email job stats for failure
-          await updateBulkJobStats(campaignId, false);
         }
       } catch (updateError) {
         logger.error('Failed to update email send status:', updateError);
@@ -446,57 +428,6 @@ const emailWorker = new Worker(
     concurrency: 10, // Process 10 jobs concurrently
   }
 );
-
-// Helper function to update bulk email job statistics
-async function updateBulkJobStats(campaignId: string, success: boolean) {
-  try {
-    const bulkJob = await prisma.bulkEmailJob.findFirst({
-      where: {
-        campaignId,
-        status: 'processing'
-      }
-    });
-
-    if (bulkJob) {
-      await prisma.bulkEmailJob.update({
-        where: { id: bulkJob.id },
-        data: {
-          processedEmails: { increment: 1 },
-          ...(success 
-            ? { successCount: { increment: 1 } }
-            : { failureCount: { increment: 1 } }
-          )
-        }
-      });
-
-      // Check if all emails are processed
-      const updatedJob = await prisma.bulkEmailJob.findUnique({
-        where: { id: bulkJob.id }
-      });
-
-      if (updatedJob && updatedJob.processedEmails >= updatedJob.totalEmails) {
-        await prisma.bulkEmailJob.update({
-          where: { id: bulkJob.id },
-          data: {
-            status: 'completed',
-            completedAt: new Date()
-          }
-        });
-
-        // Update campaign status to SENT
-        await prisma.campaign.update({
-          where: { id: campaignId },
-          data: {
-            status: 'SENT',
-            sentAt: new Date()
-          }
-        });
-      }
-    }
-  } catch (error) {
-    logger.error('Error updating bulk job stats:', error);
-  }
-}
 
 // Handle worker events
 emailWorker.on('completed', (job) => {

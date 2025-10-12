@@ -204,7 +204,7 @@ model EmailTracking {
 
 model BulkEmailJob {
   id              String    @id @default(cuid())
-  campaignId      String
+  campaignId      String    @unique
   userId          String
   provider        String // Primary provider for this bulk job
   status          String // pending, processing, completed, failed

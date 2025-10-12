@@ -274,7 +274,7 @@ export class EmailProviderService {
         const resendConfig: EmailProviderConfig = {
           name: 'resend',
           apiKey: process.env.RESEND_API_KEY,
-          defaultFrom: process.env.DEFAULT_FROM_EMAIL,
+          defaultFrom: process.env.DEFAULT_RESEND_FROM_EMAIL,
         };
 
         const resendProvider = EmailProviderFactory.createProvider(resendConfig);
@@ -288,7 +288,7 @@ export class EmailProviderService {
         const mailtrapConfig: EmailProviderConfig = {
           name: 'mailtrap',
           apiKey: process.env.MAILTRAP_API_KEY,
-          defaultFrom: process.env.DEFAULT_FROM_EMAIL,
+          defaultFrom: process.env.DEFAULT_MAILTRAP_FROM_EMAIL,
         };
 
         const mailtrapProvider = EmailProviderFactory.createProvider(mailtrapConfig);

@@ -35,12 +35,22 @@ class DatabaseMonitorService {
     // Schedule to run every 5 minutes for stats and maintenance
     cron.schedule('*/5 * * * *', async () => {
       try {
-        await this.updateCampaignMetrics();
-        await this.cleanupOldData();
+        await this.checkAllCampaignStatuses(); // This now handles both scheduled and READY drafts
+        await this.checkFailedEmailsForRetry();
+        await this.cleanupStalledJobs();
       } catch (error) {
         logger.error('Error in maintenance tasks:', error);
       }
     });
+
+    // Add a more frequent check for immediate processing (every 30 seconds)
+        cron.schedule('*/30 * * * * *', async () => { // Every 30 seconds
+        try {
+            await this.checkReadyCampaignsImmediately();
+        } catch (error) {
+            logger.error('Error in immediate campaign check:', error);
+        }
+        });
 
     logger.info('Database monitoring service started');
   }
@@ -57,55 +67,119 @@ class DatabaseMonitorService {
     }
   }
 
-  private async checkDraftCampaigns() {
+
+  /**
+ * Check for READY campaigns more frequently for immediate processing
+ */
+    private async checkReadyCampaignsImmediately() {
     try {
-      const draftCampaigns = await prisma.campaign.findMany({
+        const readyCampaigns = await prisma.campaign.findMany({
         where: {
-          status: 'DRAFT',
-          scheduledAt: {
-            not: null,
-            lte: new Date()
-          }
+            status: 'READY'
         },
         include: {
-          domain: true,
-          list: {
+            domain: true,
+            list: {
             include: {
-              emails: true
+                emails: true
             }
-          }
-        }
-      });
+            }
+        },
+        take: 5 // Process up to 5 campaigns at a time
+        });
 
-      for (const campaign of draftCampaigns) {
-        logger.info(`Processing scheduled DRAFT campaign: ${campaign.id} - ${campaign.name}`);
+        for (const campaign of readyCampaigns) {
+        logger.info(`Immediately processing READY campaign: ${campaign.id} - ${campaign.name}`);
 
         if (!await this.validateDomainForSending(campaign.domain)) {
-          logger.warn(`Domain validation failed for campaign ${campaign.id}, marking as FAILED`);
-          await prisma.campaign.update({
+            logger.warn(`Domain validation failed for campaign ${campaign.id}, marking as FAILED`);
+            await prisma.campaign.update({
             where: { id: campaign.id },
             data: { status: 'FAILED' }
-          });
-          continue;
+            });
+            continue;
         }
 
         await prisma.campaign.update({
-          where: { id: campaign.id },
-          data: { 
+            where: { id: campaign.id },
+            data: { 
             status: 'SENDING',
             sentAt: new Date()
-          }
+            }
         });
 
         await this.processCampaignEmailsDirectly(campaign);
-        logger.info(`Draft campaign ${campaign.id} processing started with ${campaign.list.emails.length} emails`);
-      }
+        logger.info(`Immediately processed READY campaign ${campaign.id}`);
+        }
     } catch (error) {
-      logger.error('Error checking draft campaigns:', error);
-      throw error;
+        logger.error('Error in immediate ready campaigns check:', error);
     }
-  }
+    }
 
+  private async checkDraftCampaigns() {
+  try {
+    // Get draft campaigns that should be processed:
+    // 1. Scheduled drafts where time has arrived
+    // 2. Drafts with status READY (for immediate processing)
+    const draftCampaigns = await prisma.campaign.findMany({
+      where: {
+        OR: [
+          {
+            // Scheduled drafts where time has arrived
+            status: 'DRAFT',
+            scheduledAt: {
+              not: null,
+              lte: new Date()
+            }
+          },
+          {
+            // Drafts that are ready for immediate processing
+            status: 'READY'
+          }
+        ]
+      },
+      include: {
+        domain: true,
+        list: {
+          include: {
+            emails: true
+          }
+        }
+      }
+    });
+
+    for (const campaign of draftCampaigns) {
+      const isImmediate = campaign.status === 'READY';
+      logger.info(`Processing ${isImmediate ? 'READY' : 'scheduled DRAFT'} campaign: ${campaign.id} - ${campaign.name}`, {
+        scheduledAt: campaign.scheduledAt,
+        immediate: isImmediate
+      });
+
+      if (!await this.validateDomainForSending(campaign.domain)) {
+        logger.warn(`Domain validation failed for campaign ${campaign.id}, marking as FAILED`);
+        await prisma.campaign.update({
+          where: { id: campaign.id },
+          data: { status: 'FAILED' }
+        });
+        continue;
+      }
+
+      await prisma.campaign.update({
+        where: { id: campaign.id },
+        data: { 
+          status: 'SENDING',
+          sentAt: new Date()
+        }
+      });
+
+      await this.processCampaignEmailsDirectly(campaign);
+      logger.info(`${isImmediate ? 'Ready' : 'Draft'} campaign ${campaign.id} processing started with ${campaign.list.emails.length} emails`);
+    }
+  } catch (error) {
+    logger.error('Error checking draft campaigns:', error);
+    throw error;
+  }
+}
   private async checkReadyCampaigns() {
     try {
       const readyCampaigns = await prisma.campaign.findMany({
@@ -154,6 +228,101 @@ class DatabaseMonitorService {
       throw error;
     }
   }
+
+
+
+/**
+ * Mark a DRAFT campaign for immediate processing by setting status to READY
+ */
+async markDraftForImmediateProcessing(campaignId: string) {
+  try {
+    const campaign = await prisma.campaign.findUnique({
+      where: { id: campaignId }
+    });
+
+    if (!campaign) {
+      throw new Error('Campaign not found');
+    }
+
+    if (campaign.status !== 'DRAFT') {
+      throw new Error(`Campaign must be in DRAFT status to process immediately. Current status: ${campaign.status}`);
+    }
+
+    // Update campaign to READY status for immediate processing
+    await prisma.campaign.update({
+      where: { id: campaignId },
+      data: { 
+        status: 'READY',
+        scheduledAt: new Date() // Set to now to ensure it gets picked up
+      }
+    });
+
+    logger.info(`Marked DRAFT campaign ${campaignId} for immediate processing (status: READY)`);
+
+    return { 
+      success: true, 
+      message: 'DRAFT campaign is queued for immediate processing',
+      campaignId: campaignId
+    };
+  } catch (error) {
+    logger.error(`Error marking DRAFT campaign ${campaignId} for immediate processing:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Process a DRAFT campaign immediately (bypasses scheduler)
+ */
+async processDraftImmediately(campaignId: string) {
+  try {
+    const campaign = await prisma.campaign.findUnique({
+      where: { id: campaignId },
+      include: {
+        domain: true,
+        list: {
+          include: {
+            emails: true
+          }
+        }
+      }
+    });
+
+    if (!campaign) {
+      throw new Error('Campaign not found');
+    }
+
+    if (campaign.status !== 'DRAFT' && campaign.status !== 'READY') {
+      throw new Error(`Campaign must be in DRAFT or READY status to process immediately. Current status: ${campaign.status}`);
+    }
+
+    if (!await this.validateDomainForSending(campaign.domain)) {
+      throw new Error('Domain validation failed. Please check your domain configuration.');
+    }
+
+    // Update campaign status directly to SENDING
+    await prisma.campaign.update({
+      where: { id: campaignId },
+      data: { 
+        status: 'SENDING',
+        sentAt: new Date()
+      }
+    });
+
+    logger.info(`Immediately processing campaign: ${campaignId}`);
+
+    // Process emails directly
+    await this.processCampaignEmailsDirectly(campaign);
+
+    return { 
+      success: true, 
+      message: 'Campaign is being processed immediately',
+      campaignId: campaignId
+    };
+  } catch (error) {
+    logger.error(`Error processing campaign ${campaignId} immediately:`, error);
+    throw error;
+  }
+}
 
   private async checkScheduledCampaigns() {
     try {

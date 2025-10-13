@@ -202,7 +202,7 @@ model EmailTracking {
   @@map("email_tracking")
 }
 
-model BulkEmailJob {
+model BulkEmailJob { 
   id              String    @id @default(cuid())
   campaignId      String    @unique
   userId          String

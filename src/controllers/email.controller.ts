@@ -33,28 +33,34 @@ export class EmailController {
   /**
    * Update an email list
    */
-  static async updateEmailList(req: Request, res: Response): Promise<void | any> {
-    try {
-      const userId = (req as any).user.id;
-      const { listId } = req.params;
-      const { title, description } = req.body;
-      
-      const emailList = await EmailService.updateEmailList(userId, listId, title, description);
-      
-      res.json({
-        message: 'Email list updated successfully',
-        emailList,
-      });
-    } catch (error) {
-      logger.error('Update email list error:', error);
-      
-      if (error instanceof Error && error.message === 'Email list not found') {
-        return res.status(404).json({ message: error.message });
-      }
-      
-      res.status(500).json({ message: 'Internal server error' });
+// In your EmailController - fix the updateEmailList method
+
+static async updateEmailList(req: Request, res: Response): Promise<void | any> {
+  try {
+    const userId = (req as any).user.id;
+    const { listId } = req.params;
+    const { name, description } = req.body; // Changed from 'title' to 'name'
+    
+    if (!name) {
+      return res.status(400).json({ message: 'List name is required' });
     }
+    
+    const emailList = await EmailService.updateEmailList(userId, listId, name, description);
+    
+    res.json({
+      message: 'Email list updated successfully',
+      emailList,
+    });
+  } catch (error) {
+    logger.error('Update email list error:', error);
+    
+    if (error instanceof Error && error.message === 'Email list not found') {
+      return res.status(404).json({ message: error.message });
+    }
+    
+    res.status(500).json({ message: 'Internal server error' });
   }
+}
   
   /**
    * Get email list with statistics

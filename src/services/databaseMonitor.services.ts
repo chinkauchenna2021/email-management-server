@@ -3,6 +3,8 @@ import { prisma } from '../config/database';
 import { logger } from '../utils/logger';
 import { EmailProviderFactory, IEmailProvider } from '../providers/email.factory';
 import { EmailProviderConfig, EmailMessage } from '../types/email.types';
+import {config } from 'dotenv';
+config();
 
 class DatabaseMonitorService {
   private isRunning = false;
@@ -375,16 +377,16 @@ class DatabaseMonitorService {
       case 'resend':
         providerConfig = {
           name: 'resend',
-          apiKey: domain.apiKey!,
-          defaultFrom: domain.fromEmail || `noreply@${domain.domain}`
+          apiKey: process.env.RESEND_API_KEY,
+          defaultFrom: process.env.DEFAULT_RESEND_FROM_EMAIL || `noreply@${domain.domain}`
         };
         break;
 
       case 'mailtrap':
         providerConfig = {
           name: 'mailtrap',
-          apiKey: domain.apiKey!,
-          defaultFrom: domain.fromEmail || `noreply@${domain.domain}`
+          apiKey: process.env.MAILTRAP_API_KEY,
+          defaultFrom: process.env.DEFAULT_MAILTRAP_FROM_EMAIL || `noreply@${domain.domain}`
         };
         break;
 

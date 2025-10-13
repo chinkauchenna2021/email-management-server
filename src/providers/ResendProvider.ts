@@ -1,9 +1,9 @@
-// services/email/providers/ResendProvider.ts
 import { BaseProvider } from './BaseProvider';
 import { EmailMessage, EmailProviderConfig } from './email.types';
+import {Resend} from 'resend'
 
 export class ResendProvider extends BaseProvider {
-  private resend: any;
+  private resend:any;
 
   constructor(config: EmailProviderConfig) {
     super(config);
@@ -13,7 +13,7 @@ export class ResendProvider extends BaseProvider {
     }
 
     // Dynamic import for Resend
-    this.resend = new (require('resend').Resend)(config.apiKey);
+    this.resend = new Resend(config.apiKey);
   }
 
   async send(email: EmailMessage): Promise<any> {

@@ -813,20 +813,18 @@
 
 
 
-
 // services/databaseMonitor.services.ts
 import cron from 'node-cron';
 import { prisma } from '../config/database';
-import { emailQueue } from './campaign.services';
 import { logger } from '../utils/logger';
-import { EmailProviderFactory } from '../providers/email.factory';
-import { EmailData } from '../services/emailProvider.services';
+import { EmailProviderFactory, IEmailProvider } from '../providers/email.factory';
+import { EmailProviderConfig, EmailMessage } from '../types/email.types';
 
 class DatabaseMonitorService {
   private isRunning = false;
   private readonly MAX_RETRY_ATTEMPTS = 3;
   private readonly RETRY_DELAY_BASE = 15 * 60 * 1000; // 15 minutes base delay
-  private readonly BATCH_SIZE = 10; // Process emails in batches
+  private readonly BATCH_SIZE = 10;
 
   startMonitoring() {
     // Schedule to run every minute for campaign processing
@@ -861,9 +859,6 @@ class DatabaseMonitorService {
     logger.info('Database monitoring service started');
   }
 
-  /**
-   * Check all campaign statuses and process accordingly
-   */
   private async checkAllCampaignStatuses() {
     try {
       await this.checkDraftCampaigns();
@@ -876,9 +871,6 @@ class DatabaseMonitorService {
     }
   }
 
-  /**
-   * Monitor DRAFT campaigns for scheduled sending
-   */
   private async checkDraftCampaigns() {
     try {
       const draftCampaigns = await prisma.campaign.findMany({
@@ -919,9 +911,7 @@ class DatabaseMonitorService {
           }
         });
 
-        // Process emails directly without queue
         await this.processCampaignEmailsDirectly(campaign);
-
         logger.info(`Draft campaign ${campaign.id} processing started with ${campaign.list.emails.length} emails`);
       }
     } catch (error) {
@@ -930,9 +920,6 @@ class DatabaseMonitorService {
     }
   }
 
-  /**
-   * Check READY campaigns (manual trigger)
-   */
   private async checkReadyCampaigns() {
     try {
       const readyCampaigns = await prisma.campaign.findMany({
@@ -982,9 +969,6 @@ class DatabaseMonitorService {
     }
   }
 
-  /**
-   * Check SCHEDULED campaigns
-   */
   private async checkScheduledCampaigns() {
     try {
       const scheduledCampaigns = await prisma.campaign.findMany({
@@ -1033,12 +1017,9 @@ class DatabaseMonitorService {
     }
   }
 
-  /**
-   * Process campaign emails directly without queue - handles sending based on provider
-   */
   private async processCampaignEmailsDirectly(campaign: any) {
     try {
-      // Create bulk email job record
+      // Create or update bulk email job record
       const bulkJob = await prisma.bulkEmailJob.upsert({
         where: { campaignId: campaign.id },
         update: {
@@ -1084,9 +1065,6 @@ class DatabaseMonitorService {
     }
   }
 
-  /**
-   * Send single email based on domain provider configuration
-   */
   private async sendSingleEmail(campaign: any, email: any, bulkJobId: string) {
     let emailSend = await prisma.emailSend.findFirst({
       where: {
@@ -1124,7 +1102,7 @@ class DatabaseMonitorService {
       const providerName = campaign.domain.smtpProvider?.toLowerCase() || 'custom';
 
       // Prepare email data
-      const emailData: EmailData = {
+      const emailData: EmailMessage = {
         to: email.address,
         from: campaign.domain.fromEmail || `noreply@${campaign.domain.domain}`,
         subject: campaign.subject,
@@ -1142,7 +1120,19 @@ class DatabaseMonitorService {
           where: { id: emailSend.id },
           data: {
             status: 'SENT',
-            emailId: result.messageId as string
+            // Note: You might want to store messageId in a different field
+            // since your schema doesn't have a messageId field in EmailSend
+          }
+        });
+
+        // Create tracking record
+        await prisma.emailTracking.create({
+          data: {
+            email: email.address,
+            jobId: bulkJobId,
+            messageId: result.messageId,
+            provider: providerName,
+            status: 'sent'
           }
         });
 
@@ -1192,19 +1182,16 @@ class DatabaseMonitorService {
     }
   }
 
-  /**
-   * Configure email provider based on domain settings
-   */
-  private async configureProviderForDomain(domain: any) {
+  private async configureProviderForDomain(domain: any): Promise<IEmailProvider> {
     const providerName = domain.smtpProvider?.toLowerCase() || 'custom';
     
-    let providerConfig;
+    let providerConfig: EmailProviderConfig;
 
     switch (providerName) {
       case 'resend':
         providerConfig = {
           name: 'resend',
-          apiKey: domain.apiKey,
+          apiKey: domain.apiKey!,
           defaultFrom: domain.fromEmail || `noreply@${domain.domain}`
         };
         break;
@@ -1212,7 +1199,7 @@ class DatabaseMonitorService {
       case 'mailtrap':
         providerConfig = {
           name: 'mailtrap',
-          apiKey: domain.apiKey,
+          apiKey: domain.apiKey!,
           defaultFrom: domain.fromEmail || `noreply@${domain.domain}`
         };
         break;
@@ -1242,9 +1229,6 @@ class DatabaseMonitorService {
     return EmailProviderFactory.createProvider(providerConfig);
   }
 
-  /**
-   * Update bulk email job statistics
-   */
   private async updateBulkJobStats(bulkJobId: string, success: boolean) {
     try {
       await prisma.bulkEmailJob.update({
@@ -1273,31 +1257,20 @@ class DatabaseMonitorService {
         });
 
         // Update campaign status to SENT
-        const campaign = await prisma.campaign.findFirst({
+        await prisma.campaign.update({
           where: { 
-            BulkEmailJob: {
-              some: { id: bulkJobId }
-            }
+            id: updatedJob.campaignId
+          },
+          data: {
+            status: 'SENT'
           }
         });
-
-        if (campaign) {
-          await prisma.campaign.update({
-            where: { id: campaign.id },
-            data: {
-              status: 'SENT'
-            }
-          });
-        }
       }
     } catch (error) {
       logger.error('Error updating bulk job stats:', error);
     }
   }
 
-  /**
-   * Validate domain for sending
-   */
   private async validateDomainForSending(domain: any): Promise<boolean> {
     try {
       const validProviders = ['custom', 'resend', 'mailtrap'];
@@ -1345,9 +1318,9 @@ class DatabaseMonitorService {
     }
   }
 
-  /**
-   * Check for stalled SENDING campaigns and restart if needed
-   */
+  // ... Keep the rest of your methods (checkStalledSendingCampaigns, checkFailedEmailsForRetry, etc.)
+  // They should work as is with the current implementation
+
   private async checkStalledSendingCampaigns() {
     try {
       const stalledCampaigns = await prisma.campaign.findMany({
@@ -1398,9 +1371,6 @@ class DatabaseMonitorService {
     }
   }
 
-  /**
-   * Check failed emails for retry with exponential backoff
-   */
   private async checkFailedEmailsForRetry() {
     try {
       const failedEmails = await prisma.emailSend.findMany({
@@ -1447,6 +1417,7 @@ class DatabaseMonitorService {
       throw error;
     }
   }
+
 
   // ... [Keep the rest of your existing methods - cleanupStalledJobs, updateCampaignMetrics, cleanupOldData, etc.]
 

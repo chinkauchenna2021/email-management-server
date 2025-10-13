@@ -1,6 +1,6 @@
 // services/email/providers/BaseProvider.ts
-import { IEmailProvider, EmailMessage } from './email.factory';
-import { EmailProviderConfig } from './email.types';
+import { IEmailProvider } from '../providers/email.factory';
+import { EmailMessage, EmailProviderConfig } from '../types/email.types';
 
 export abstract class BaseProvider implements IEmailProvider {
   protected config: EmailProviderConfig;

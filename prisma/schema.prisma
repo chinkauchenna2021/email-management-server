@@ -218,7 +218,7 @@ model BulkEmailJob {
   startedAt       DateTime?
   completedAt     DateTime?
 
-  campaign Campaign @relation(fields: [campaignId], references: [id])
+ campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade) // Add onDelete: Cascade
   user     User     @relation(fields: [userId], references: [id])
 
   @@index([userId])

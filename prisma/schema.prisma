@@ -5,7 +5,8 @@ generator client {
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL") // For migrations
+  directUrl = env("DIRECT_URL") 
+  relationMode = "prisma"
 }
 
 model User {
@@ -183,6 +184,7 @@ model AutomationExecution {
 
 // Add to your existing Prisma schema
 
+// Simplify your BulkEmailJob model
 model EmailTracking {
   id        String   @id @default(cuid())
   email     String
@@ -224,6 +226,7 @@ model BulkEmailJob {
   @@index([scheduledAt])
   @@map("bulk_email_jobs")
 }
+
 
 enum Role {
   USER

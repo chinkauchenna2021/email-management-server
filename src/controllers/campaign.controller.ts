@@ -9,6 +9,64 @@ export class CampaignController {
    * Create a new campaign
    */
 // Update the createCampaign method in CampaignController
+// static async createCampaign(req: Request, res: Response): Promise<void | any> {
+//   try {
+//     const userId = (req as any).user.id;
+//     const { 
+//       name, 
+//       subject, 
+//       content, 
+//       domainId, 
+//       listId, 
+//       templateId,
+//       scheduledAt,
+//       saveAsDraft = false 
+//     } = req.body;
+    
+//     if (!name || !subject || !content || !domainId || !listId) {
+//       return res.status(400).json({ 
+//         message: 'Name, subject, content, domainId, and listId are required' 
+//       });
+//     }
+    
+//     const campaign = await CampaignService.createCampaign(
+//       userId,
+//       name,
+//       subject,
+//       content,
+//       domainId,
+//       listId,
+//       templateId,
+//       scheduledAt ? new Date(scheduledAt) : undefined,
+//       saveAsDraft
+//     );
+
+//     // If scheduled for future, add to scheduler
+//     if (scheduledAt && !saveAsDraft) {
+//       const scheduler = CampaignScheduler.getInstance();
+//       await scheduler.scheduleCampaign(campaign.id, new Date(scheduledAt));
+//     }
+    
+//     res.status(201).json({
+//       message: 'Campaign created successfully',
+//       campaign,
+//     });
+//   } catch (error) {
+//     logger.error('Create campaign error:', error);
+    
+//     if (error instanceof Error) {
+//       if (error.message === 'Domain not found' || error.message === 'Email list not found' || error.message === 'Template not found') {
+//         return res.status(404).json({ message: error.message });
+//       }
+//       if (error.message === 'Domain is not verified' || error.message === 'Domain must have SMTP configuration to send emails') {
+//         return res.status(400).json({ message: error.message });
+//       }
+//     }
+    
+//     res.status(500).json({ message: 'Internal server error' });
+//   }
+// }
+
 static async createCampaign(req: Request, res: Response): Promise<void | any> {
   try {
     const userId = (req as any).user.id;
@@ -23,17 +81,21 @@ static async createCampaign(req: Request, res: Response): Promise<void | any> {
       saveAsDraft = false 
     } = req.body;
     
-    if (!name || !subject || !content || !domainId || !listId) {
+    // Only require subject, domainId, and listId
+    if (!subject || !domainId || !listId) {
       return res.status(400).json({ 
-        message: 'Name, subject, content, domainId, and listId are required' 
+        message: 'Subject, domainId, and listId are required' 
       });
     }
     
+    // Generate name from subject if not provided
+    const campaignName = name || `Campaign: ${subject.substring(0, 50)}${subject.length > 50 ? '...' : ''}`;
+    
     const campaign = await CampaignService.createCampaign(
       userId,
-      name,
+      campaignName,
       subject,
-      content,
+      content || '<p>Your email content here</p>', // Default content
       domainId,
       listId,
       templateId,
@@ -66,7 +128,6 @@ static async createCampaign(req: Request, res: Response): Promise<void | any> {
     res.status(500).json({ message: 'Internal server error' });
   }
 }
-
 
 // Add this method to your CampaignController class
 static async deleteCampaign(req: Request, res: Response): Promise<void | any> {

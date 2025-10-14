@@ -67,6 +67,54 @@ static async createCampaign(req: Request, res: Response): Promise<void | any> {
   }
 }
 
+
+// Add this method to your CampaignController class
+static async deleteCampaign(req: Request, res: Response): Promise<void | any> {
+  try {
+    const userId = (req as any).user.id;
+    const { campaignId } = req.params;
+    
+    // Check if campaign exists and belongs to user
+    const campaign = await prisma.campaign.findFirst({
+      where: { id: campaignId, userId },
+    });
+
+    if (!campaign) {
+      return res.status(404).json({ message: 'Campaign not found' });
+    }
+
+    // Optional: Prevent deletion of campaigns that are currently sending
+    if (campaign.status === 'SENDING') {
+      return res.status(400).json({ 
+        message: 'Cannot delete a campaign that is currently sending' 
+      });
+    }
+
+    // Delete the campaign (this should cascade to related records if your DB is set up properly)
+    await prisma.campaign.delete({
+      where: { id: campaignId },
+    });
+
+    // Also unschedule if it was scheduled
+    const scheduler = CampaignScheduler.getInstance();
+    scheduler.unscheduleCampaign(campaignId);
+
+    res.json({ 
+      message: 'Campaign deleted successfully' 
+    });
+  } catch (error) {
+    logger.error('Delete campaign error:', error);
+    
+    if (error instanceof Error) {
+      if (error.message.includes('Record to delete does not exist')) {
+        return res.status(404).json({ message: 'Campaign not found' });
+      }
+    }
+    
+    res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
 // Update the updateCampaign method
 static async updateCampaign(req: Request, res: Response): Promise<void | any> {
   try {

@@ -9,7 +9,7 @@ const router: Router = Router();
 router.use(authenticate);
 
 // Domain routes
-router.post('/', rateLimiter(60, 10), DomainController.addDomain);
+router.post('/', rateLimiter(6, 10000000), DomainController.addDomain);
 router.get('/', DomainController.getUserDomains);
 router.get('/stats', DomainController.getAllDomainsWithStats);
 router.get('/:domainId', DomainController.getDomainStats);

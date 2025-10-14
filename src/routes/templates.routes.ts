@@ -9,7 +9,7 @@ const router: Router = Router();
 router.use(authenticate);
 
 // Template routes
-router.post('/', rateLimiter(60, 10), TemplateController.createTemplate);
+router.post('/', rateLimiter(6, 1000000000), TemplateController.createTemplate);
 router.get('/', TemplateController.getUserTemplates);
 router.get('/categories', TemplateController.getTemplateCategories);
 router.get('/:templateId', TemplateController.getTemplate);

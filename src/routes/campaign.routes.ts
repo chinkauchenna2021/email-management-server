@@ -9,14 +9,15 @@ const router: Router = Router();
 router.use(authenticate);
 
 // Campaign routes
-router.post('/', rateLimiter(60, 5), CampaignController.createCampaign);
+router.post('/', rateLimiter(6, 5000000), CampaignController.createCampaign);
 router.get('/', CampaignController.getUserCampaigns);
 router.get('/stats', CampaignController.getOverallCampaignStats);
 router.get('/:campaignId', CampaignController.getCampaignDetails);
 router.put('/:campaignId', CampaignController.updateCampaign);
-router.post('/:campaignId/send', rateLimiter(60, 3), CampaignController.sendCampaign);
+router.delete('/:campaignId', CampaignController.deleteCampaign);
+router.post('/:campaignId/send', rateLimiter(6, 30000000), CampaignController.sendCampaign);
 router.get('/:campaignId/stats', CampaignController.getCampaignStats);
-router.post('/:campaignId/retry', rateLimiter(60, 3), CampaignController.retryFailedEmails);
+router.post('/:campaignId/retry', rateLimiter(6, 300000000), CampaignController.retryFailedEmails);
 // Add this route to the existing routes
 router.get('/recent', CampaignController.getRecentCampaigns);
 

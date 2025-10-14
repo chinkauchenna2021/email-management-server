@@ -2,6 +2,7 @@ import {prisma} from "../config/database";
 import { logger } from "../utils/logger";
 import { Queue } from "bullmq";
 import redisClient from "../config/redis";
+import { CampaignScheduler } from "./campaignScheduler";
 
 // Create email queue
 export const emailQueue = new Queue("emailQueue", {
@@ -102,6 +103,44 @@ export class CampaignService {
       throw error;
     }
   }
+
+
+
+// Add this method to your CampaignService class
+static async deleteCampaign(userId: string, campaignId: string) {
+  try {
+    // Check if campaign exists and belongs to user
+    const campaign = await prisma.campaign.findFirst({
+      where: { id: campaignId, userId },
+    });
+
+    if (!campaign) {
+      throw new Error('Campaign not found');
+    }
+
+    // Prevent deletion of campaigns that are currently sending
+    if (campaign.status === 'SENDING') {
+      throw new Error('Cannot delete a campaign that is currently sending');
+    }
+
+    // Delete the campaign
+    await prisma.campaign.delete({
+      where: { id: campaignId },
+    });
+
+    // Unschedule if it was scheduled
+    const scheduler = CampaignScheduler.getInstance();
+    scheduler.unscheduleCampaign(campaignId);
+
+    return { message: 'Campaign deleted successfully' };
+  } catch (error) {
+    logger.error('Delete campaign error:', error);
+    throw error;
+  }
+}
+
+
+
 
   /**
    * Update a campaign

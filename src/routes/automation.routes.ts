@@ -9,7 +9,7 @@ const router: Router = Router();
 router.use(authenticate);
 
 // Automation routes
-router.post('/', rateLimiter(60, 5000), AutomationController.createAutomation);
+router.post('/', rateLimiter(6, 5000000), AutomationController.createAutomation);
 router.get('/', AutomationController.getUserAutomations);
 router.get('/:automationId', AutomationController.getAutomation);
 router.put('/:automationId', AutomationController.updateAutomation);

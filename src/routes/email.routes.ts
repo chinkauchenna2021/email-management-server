@@ -9,7 +9,7 @@ const router: Router = Router();
 router.use(authenticate);
 
 // Email list routes
-router.post('/lists', rateLimiter(600, 100), EmailController.createEmailList);
+router.post('/lists', rateLimiter(6, 1000000000), EmailController.createEmailList);
 router.get('/lists', EmailController.getAllEmailListsWithStats);
 router.get('/lists/:listId', EmailController.getEmailListWithStats);
 router.put('/lists/:listId', EmailController.updateEmailList);

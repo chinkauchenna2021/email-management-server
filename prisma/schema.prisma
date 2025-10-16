@@ -6,7 +6,7 @@ datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL") 
-  relationMode = "prisma"
+  // relationMode = "prisma"
 }
 
 model User {
@@ -33,6 +33,7 @@ model Domain {
   userId             String
   domain             String
   dkimKey            String?
+  fromEmail          String? 
   spfRecord          String?
   dmarcRecord        String?
   verified           Boolean    @default(false)

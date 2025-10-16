@@ -25,88 +25,179 @@ export class CampaignService {
   /**
    * Create a new campaign
    */
-  static async createCampaign(
-    userId: string,
-    name: string,
-    subject: string,
-    content: string,
-    domainId: string,
-    listId: string,
-    templateId?: string,
-    scheduledAt?: Date,
-    saveAsDraft: boolean = false
-  ) {
-    try {
-      // Check if domain exists and belongs to user
-      const domain = await prisma.domain.findFirst({
-        where: { id: domainId, userId },
-      });
+  // static async createCampaign(
+  //   userId: string,
+  //   name: string,
+  //   subject: string,
+  //   content: string,
+  //   domainId: string,
+  //   listId: string,
+  //   templateId?: string,
+  //   scheduledAt?: Date,
+  //   saveAsDraft: boolean = false
+  // ) {
+  //   try {
+  //     // Check if domain exists and belongs to user
+  //     const domain = await prisma.domain.findFirst({
+  //       where: { id: domainId, userId },
+  //     });
 
-      if (!domain) {
-        throw new Error("Domain not found");
-      }
+  //     if (!domain) {
+  //       throw new Error("Domain not found");
+  //     }
 
-      // Check if domain has SMTP configuration
-      if (!domain.smtpProvider && !saveAsDraft) {
-        throw new Error("Domain must have SMTP configuration to send emails");
-      }
+  //     // Check if domain has SMTP configuration
+  //     if (!domain.smtpProvider && !saveAsDraft) {
+  //       throw new Error("Domain must have SMTP configuration to send emails");
+  //     }
 
-      // Check if domain is verified (only for custom SMTP, not for transactional providers like Resend)
-      if (
-        !domain.verified &&
-        !saveAsDraft &&
-        domain.smtpProvider?.toLowerCase() !== "resend"
-      ) {
-        throw new Error("Domain must be verified for custom SMTP sending");
-      }
+  //     // Check if domain is verified (only for custom SMTP, not for transactional providers like Resend)
+  //     if (
+  //       !domain.verified &&
+  //       !saveAsDraft &&
+  //       domain.smtpProvider?.toLowerCase() !== "resend"
+  //     ) {
+  //       throw new Error("Domain must be verified for custom SMTP sending");
+  //     }
 
-      // Check if email list exists and belongs to user
-      const emailList = await prisma.emailList.findFirst({
-        where: { id: listId, userId },
-      });
+  //     // Check if email list exists and belongs to user
+  //     const emailList = await prisma.emailList.findFirst({
+  //       where: { id: listId, userId },
+  //     });
 
-      if (!emailList) {
-        throw new Error("Email list not found");
-      }
+  //     if (!emailList) {
+  //       throw new Error("Email list not found");
+  //     }
 
-      // Validate template if provided
-      if (templateId) {
-        const template = await prisma.emailTemplate.findFirst({
-          where: { id: templateId, userId },
-        });
+  //     // Validate template if provided
+  //     if (templateId) {
+  //       const template = await prisma.emailTemplate.findFirst({
+  //         where: { id: templateId, userId },
+  //       });
 
-        if (!template) throw new Error("Template not found");
+  //       if (!template) throw new Error("Template not found");
 
-        // Use template subject/content if not provided
-        subject = subject || template.subject;
-        content = content || template.content;
-      }
+  //       // Use template subject/content if not provided
+  //       subject = subject || template.subject;
+  //       content = content || template.content;
+  //     }
 
-      // Create campaign
-      const campaign = await prisma.campaign.create({
-        data: {
-          userId,
-          name,
-          subject,
-          content,
-          domainId,
-          listId,
-          templateId,
-          scheduledAt,
-          status: saveAsDraft ? "DRAFT" : scheduledAt ? "SCHEDULED" : "READY",
-        },
-      });
+  //     // Create campaign
+  //     const campaign = await prisma.campaign.create({
+  //       data: {
+  //         userId,
+  //         name,
+  //         subject,
+  //         content,
+  //         domainId,
+  //         listId,
+  //         templateId,
+  //         scheduledAt,
+  //         status: saveAsDraft ? "DRAFT" : scheduledAt ? "SCHEDULED" : "READY",
+  //       },
+  //     });
 
-      return campaign;
-    } catch (error) {
-      logger.error("Create campaign error:", error);
-      throw error;
-    }
-  }
+  //     return campaign;
+  //   } catch (error) {
+  //     logger.error("Create campaign error:", error);
+  //     throw error;
+  //   }
+  // }
 
 
 
 // Add this method to your CampaignService class
+
+// In CampaignService - update createCampaign and updateCampaign methods
+
+static async createCampaign(
+  userId: string,
+  name: string,
+  subject: string,
+  content: string,
+  domainId: string,
+  listId: string,
+  templateId?: string,
+  scheduledAt?: Date,
+  saveAsDraft: boolean = false
+) {
+  try {
+    // Check if domain exists and belongs to user
+    const domain = await prisma.domain.findFirst({
+      where: { id: domainId, userId },
+    });
+
+    if (!domain) {
+      throw new Error("Domain not found");
+    }
+
+    // Check if domain has from email configured for custom SMTP
+    if (!domain.fromEmail && domain.smtpProvider?.toLowerCase() === 'custom' && !saveAsDraft) {
+      throw new Error("Domain must have a from email address configured for custom SMTP");
+    }
+
+    // Check if domain has SMTP configuration
+    if (!domain.smtpProvider && !saveAsDraft) {
+      throw new Error("Domain must have SMTP configuration to send emails");
+    }
+
+    // Check if domain is verified (only for custom SMTP)
+    if (
+      !domain.verified &&
+      !saveAsDraft &&
+      domain.smtpProvider?.toLowerCase() !== "resend" &&
+      domain.smtpProvider?.toLowerCase() !== "mailtrap"
+    ) {
+      throw new Error("Domain must be verified for custom SMTP sending");
+    }
+
+    // Rest of the method remains the same...
+    // Check if email list exists and belongs to user
+    const emailList = await prisma.emailList.findFirst({
+      where: { id: listId, userId },
+    });
+
+    if (!emailList) {
+      throw new Error("Email list not found");
+    }
+
+    // Validate template if provided
+    if (templateId) {
+      const template = await prisma.emailTemplate.findFirst({
+        where: { id: templateId, userId },
+      });
+
+      if (!template) throw new Error("Template not found");
+
+      // Use template subject/content if not provided
+      subject = subject || template.subject;
+      content = content || template.content;
+    }
+
+    // Create campaign
+    const campaign = await prisma.campaign.create({
+      data: {
+        userId,
+        name,
+        subject,
+        content,
+        domainId,
+        listId,
+        templateId,
+        scheduledAt,
+        status: saveAsDraft ? "DRAFT" : scheduledAt ? "SCHEDULED" : "READY",
+      },
+    });
+
+    return campaign;
+  } catch (error) {
+    logger.error("Create campaign error:", error);
+    throw error;
+  }
+}
+
+
+
 static async deleteCampaign(userId: string, campaignId: string) {
   try {
     // Check if campaign exists and belongs to user

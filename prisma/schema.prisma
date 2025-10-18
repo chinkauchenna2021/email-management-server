@@ -89,6 +89,7 @@ model Campaign {
   subject      String
   content      String
   userId       String
+  fromName     String? 
   user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   domainId     String
   domain       Domain         @relation(fields: [domainId], references: [id], onDelete: Cascade)

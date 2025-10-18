@@ -55,20 +55,71 @@ class DatabaseMonitorService {
   private async processCampaignsImmediately() {
     try {
       // Get campaigns that should be processed immediately
+      // const campaignsToProcess = await prisma.campaign.findMany({
+      //   where: {
+      //     OR: [
+      //       {
+      //         // DRAFT campaigns with no schedule (process immediately)
+      //         status: 'DRAFT',
+      //         scheduledAt: null
+      //       },
+      //       {
+      //         // READY campaigns (manually triggered for immediate processing)
+      //         status: 'READY'
+      //       },
+      //       {
+      //         // DRAFT campaigns where schedule time has arrived
+      //         status: 'DRAFT',
+      //         scheduledAt: {
+      //           lte: new Date()
+      //         }
+      //       }
+      //     ]
+      //   },
+      //   include: {
+      //     domain: {
+      //       select: {
+      //         id: true,
+      //         domain: true,
+      //         verified: true,
+      //         smtpProvider: true,
+      //         smtpHost: true,
+      //         smtpPort: true,
+      //         smtpUsername: true,
+      //         smtpPassword: true,
+      //         enableDomainWarmup: true,
+      //         dailyLimit: true,
+      //         reputation: true
+      //       }
+      //     },
+      //     list: {
+      //       include: {
+      //         emails: {
+      //           where: {
+      //             valid: true
+      //           }
+      //         }
+      //       }
+      //     }
+      //   },
+      //   orderBy: [
+      //     { scheduledAt: 'asc' }, // Process scheduled ones first
+      //     { createdAt: 'asc' }    // Then older ones first
+      //   ],
+      //   take: 5 // Process in small batches to avoid overload
+      // });
+      // In DatabaseMonitorService - update processCampaignsImmediately method
       const campaignsToProcess = await prisma.campaign.findMany({
         where: {
           OR: [
             {
-              // DRAFT campaigns with no schedule (process immediately)
               status: 'DRAFT',
               scheduledAt: null
             },
             {
-              // READY campaigns (manually triggered for immediate processing)
               status: 'READY'
             },
             {
-              // DRAFT campaigns where schedule time has arrived
               status: 'DRAFT',
               scheduledAt: {
                 lte: new Date()
@@ -87,6 +138,7 @@ class DatabaseMonitorService {
               smtpPort: true,
               smtpUsername: true,
               smtpPassword: true,
+              fromEmail: true, // Make sure this is included
               enableDomainWarmup: true,
               dailyLimit: true,
               reputation: true
@@ -103,10 +155,10 @@ class DatabaseMonitorService {
           }
         },
         orderBy: [
-          { scheduledAt: 'asc' }, // Process scheduled ones first
-          { createdAt: 'asc' }    // Then older ones first
+          { scheduledAt: 'asc' },
+          { createdAt: 'asc' }
         ],
-        take: 5 // Process in small batches to avoid overload
+        take: 5
       });
 
       for (const campaign of campaignsToProcess) {
@@ -435,11 +487,10 @@ private async sendSingleEmail(campaign: any, email: any, bulkJobId: string) {
     const provider = await this.configureProviderForDomain(campaign.domain);
     const providerName = campaign.domain.smtpProvider?.toLowerCase() || 'custom';
 
-    // FIX: Get from email from domain configuration or use default
+    // Get from email from domain configuration
     let fromEmail: string;
     
     if (campaign.domain.fromEmail) {
-      // Use the fromEmail stored in domain if available
       fromEmail = campaign.domain.fromEmail;
     } else {
       // Fallback logic based on provider
@@ -455,14 +506,17 @@ private async sendSingleEmail(campaign: any, email: any, bulkJobId: string) {
       }
     }
 
+    // Use the fromName from campaign data with the domain's fromEmail
+    const fromAddress = `${campaign.fromName} <${fromEmail}>`;
+
     const emailData: EmailMessage = {
       to: email.address,
-      from: fromEmail,
+      from: fromAddress, // Use the formatted from address
       subject: campaign.subject,
       html: campaign.content,
     };
 
-    logger.debug(`Sending email to ${email.address} from ${fromEmail} using ${providerName}`);
+    logger.debug(`Sending email to ${email.address} from ${fromAddress} using ${providerName}`);
 
     // Send email
     const result = await provider.send(emailData);
@@ -490,7 +544,7 @@ private async sendSingleEmail(campaign: any, email: any, bulkJobId: string) {
       // Update bulk job stats
       await this.updateBulkJobStats(bulkJobId, true);
 
-      logger.info(`Email sent successfully to ${email.address} from ${fromEmail} using ${providerName}`);
+      logger.info(`Email sent successfully to ${email.address} from ${fromAddress} using ${providerName}`);
     } else {
       throw new Error('No message ID returned from provider');
     }
@@ -512,7 +566,6 @@ private async sendSingleEmail(campaign: any, email: any, bulkJobId: string) {
     await this.updateBulkJobStats(bulkJobId, false);
   }
 }
-
 
 
   /**

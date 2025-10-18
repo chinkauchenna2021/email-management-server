@@ -117,6 +117,7 @@ static async createCampaign(
   content: string,
   domainId: string,
   listId: string,
+  fromName: string, // Add fromName parameter
   templateId?: string,
   scheduledAt?: Date,
   saveAsDraft: boolean = false
@@ -175,12 +176,13 @@ static async createCampaign(
     }
 
     // Create campaign
-    const campaign = await prisma.campaign.create({
+      const campaign = await prisma.campaign.create({
       data: {
         userId,
         name,
         subject,
         content,
+        fromName, // Store fromName in the database
         domainId,
         listId,
         templateId,

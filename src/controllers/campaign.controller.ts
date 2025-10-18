@@ -67,6 +67,7 @@ export class CampaignController {
 //   }
 // }
 
+// In CampaignController - update createCampaign method
 static async createCampaign(req: Request, res: Response): Promise<void | any> {
   try {
     const userId = (req as any).user.id;
@@ -77,14 +78,15 @@ static async createCampaign(req: Request, res: Response): Promise<void | any> {
       domainId, 
       listId, 
       templateId,
+      fromName, // Add fromName
       scheduledAt,
       saveAsDraft = false 
     } = req.body;
     
-    // Only require subject, domainId, and listId
-    if (!subject || !domainId || !listId) {
+    // Only require subject, domainId, listId, and fromName
+    if (!subject || !domainId || !listId || !fromName) {
       return res.status(400).json({ 
-        message: 'Subject, domainId, and listId are required' 
+        message: 'Subject, domainId, listId, and fromName are required' 
       });
     }
     
@@ -95,9 +97,10 @@ static async createCampaign(req: Request, res: Response): Promise<void | any> {
       userId,
       campaignName,
       subject,
-      content || '<p>Your email content here</p>', // Default content
+      content || '<p>Your email content here</p>',
       domainId,
       listId,
+      fromName, // Pass fromName
       templateId,
       scheduledAt ? new Date(scheduledAt) : undefined,
       saveAsDraft
@@ -128,6 +131,9 @@ static async createCampaign(req: Request, res: Response): Promise<void | any> {
     res.status(500).json({ message: 'Internal server error' });
   }
 }
+
+
+
 
 // Add this method to your CampaignController class
 static async deleteCampaign(req: Request, res: Response): Promise<void | any> {

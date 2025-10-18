@@ -33,6 +33,7 @@
     "studio": "npx prisma studio",
     "seed": "npx prisma db seed",
     "prisma:reset": "npx prisma migrate reset",
+    "prisma:force-reset":"prisma db push --force-reset",
     "ts:dev": "ts-node-dev --respawn --transpile-only src/app.ts",
     "dockerbuild": "docker build -f ./src/infrastructure/docker/DockerFile -t file-converter-app",
     "dockerrun": "docker run -p 3000:3000 file-converter-app",

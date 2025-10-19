@@ -507,7 +507,8 @@ private async sendSingleEmail(campaign: any, email: any, bulkJobId: string) {
     }
 
     // Use the fromName from campaign data with the domain's fromEmail
-    const fromAddress = `${campaign.fromName} <${fromEmail}>`;
+    // const fromAddress = `${campaign.fromName} <${fromEmail}>`;
+       const fromAddress = `${fromEmail}`;
 
     const emailData: EmailMessage = {
       to: email.address,

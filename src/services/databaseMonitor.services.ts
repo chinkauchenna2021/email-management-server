@@ -462,7 +462,7 @@ private async sendSingleEmail(campaign: any, email: any, bulkJobId: string) {
           transport: {
             host: domain.smtpHost,
             port: domain.smtpPort || 587,
-            secure: domain.smtpPort === 465,
+            secure: domain.smtpPort == 465,
             auth: {
               user: domain.smtpUsername,
               pass: domain.smtpPassword

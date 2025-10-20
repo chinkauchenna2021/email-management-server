@@ -8,9 +8,6 @@ export abstract class BaseProvider implements IEmailProvider {
   constructor(config: EmailProviderConfig) {
     this.config = config;
   }
-  getProviderName(): string {
-    throw new Error('Method not implemented.');
-  }
 
   abstract send(email: EmailMessage): Promise<any>;
   abstract sendBulk(emails: EmailMessage[]): Promise<any>;

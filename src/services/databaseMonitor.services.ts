@@ -461,7 +461,7 @@ private async sendSingleEmail(campaign: any, email: any, bulkJobId: string) {
           name: 'nodemailer',
           transport: {
             host: domain.smtpHost,
-            port: domain.smtpPort || 465,
+            port: 465,
             secure: true, 
             secureConnection: false,
             tls: {

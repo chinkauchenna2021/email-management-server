@@ -14,7 +14,6 @@ class DatabaseMonitorService {
 
   startMonitoring() {
     logger.info('Starting database monitoring service...');
-
     // Primary monitor - runs every 30 seconds for immediate processing
     cron.schedule('*/30 * * * * *', async () => {
       if (this.isRunning) {
@@ -363,7 +362,7 @@ private async sendSingleEmail(campaign: any, email: any, bulkJobId: string) {
           fromEmail = process.env.DEFAULT_MAILTRAP_FROM_EMAIL || `noreply@${campaign.domain.domain}`;
           break;
         default:
-          fromEmail = `noreply@${campaign.domain.domain}`;
+          fromEmail = `${campaign.domain.domain}`;
       }
     }
 
@@ -469,7 +468,7 @@ private async sendSingleEmail(campaign: any, email: any, bulkJobId: string) {
               pass: domain.smtpPassword
             }
           },
-          defaultFrom:`noreply@${domain.domain}`
+          defaultFrom:`${domain.domain}`
         };
         break;
     }

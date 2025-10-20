@@ -9,8 +9,9 @@ config();
 class DatabaseMonitorService {
   private isRunning = false;
   private readonly MAX_RETRY_ATTEMPTS = 3;
-  private readonly RETRY_DELAY_BASE = 15 * 60 * 1000; // 15 minutes base delay
-  private readonly BATCH_SIZE = 10;
+  private readonly RETRY_DELAY_BASE = 15 * 60 * 1000;
+  private readonly BATCH_SIZE = 5; // Reduced for better cooling
+  private providerCoolingMap = new Map<string, Date>();
 
   startMonitoring() {
     logger.info('Starting database monitoring service...');
@@ -324,254 +325,146 @@ class DatabaseMonitorService {
     }
   }
 
-  /**
-   * Send single email with proper error handling and tracking
-   */
-  // private async sendSingleEmail(campaign: any, email: any, bulkJobId: string) {
-  //   let emailSend = await prisma.emailSend.findFirst({
-  //     where: {
-  //       emailId: email.id,
-  //       campaignId: campaign.id
-  //     }
-  //   });
 
-  //   if (!emailSend) {
-  //     emailSend = await prisma.emailSend.create({
-  //       data: {
-  //         emailId: email.id,
-  //         campaignId: campaign.id,
-  //         status: 'PENDING'
-  //       }
-  //     });
-  //   } else {
-  //     await prisma.emailSend.update({
-  //       where: { id: emailSend.id },
-  //       data: {
-  //         status: 'PENDING',
-  //         bounceReason: null,
-  //         openedAt: null,
-  //         clickedAt: null,
-  //         bouncedAt: null,
-  //         complainedAt: null,
-  //         retries: 0
-  //       }
-  //     });
-  //   }
-
-  //   try {
-  //     // Configure provider based on domain
-  //     const provider = await this.configureProviderForDomain(campaign.domain);
-  //     const providerName = campaign.domain.smtpProvider?.toLowerCase() || 'custom';
-
-
-
-
-
-
-
-  //     //    FOUND BUG 🐛🐛🐛
-
-
-
-
-
-
-
-  //     // Prepare email data - use domain name for from address if fromEmail is not set
-  //   //   const fromEmail =  campaign.domain.fromEmail || `noreply@${campaign.domain.domain}`;
-
-  //     const fromEmail =  (campaign.domain.smtpProvider.toLowerCase() === 'resend')?  process.env.DEFAULT_RESEND_FROM_EMAIL : (campaign.domain.smtpProvider.toLowerCase() === 'mailtrap')? process.env.DEFAULT_MAILTRAP_FROM_EMAIL :  `noreply@${campaign.domain.domain}` 
-  //   //   const fromEmail =  campaign.
-  //     const emailData: EmailMessage = {
-  //       to: email.address,
-  //       from: fromEmail,
-  //       subject: campaign.subject,
-  //       html: campaign.content,
-  //     };
-
-  //     logger.debug(`Sending email to ${email.address} using ${providerName}`);
-
-  //     // Send email
-  //     const result = await provider.send(emailData);
-
-  //     if (result.messageId) {
-  //       // Success - update email send record
-  //       await prisma.emailSend.update({
-  //         where: { id: emailSend.id },
-  //         data: {
-  //           status: 'SENT'
-  //         }
-  //       });
-
-  //       // Create tracking record
-  //       await prisma.emailTracking.create({
-  //         data: {
-  //           email: email.address,
-  //           jobId: bulkJobId,
-  //           messageId: result.messageId,
-  //           provider: providerName,
-  //           status: 'sent'
-  //         }
-  //       });
-
-  //       // Update bulk job stats
-  //       await this.updateBulkJobStats(bulkJobId, true);
-
-  //       // Update domain reputation
-  //       await prisma.domain.update({
-  //         where: { id: campaign.domain.id },
-  //         data: {
-  //           reputation: {
-  //             increment: 1
-  //           }
-  //         }
-  //       });
-
-  //       logger.info(`Email sent successfully to ${email.address} using ${providerName}`);
-  //     } else {
-  //       throw new Error('No message ID returned from provider');
-  //     }
-
-  //   } catch (error) {
-  //     logger.error(`Failed to send email to ${email.address}:`, error);
-
-  //     // Update email send record as failed
-  //     await prisma.emailSend.update({
-  //       where: { id: emailSend.id },
-  //       data: {
-  //         status: 'FAILED',
-  //         bounceReason: error instanceof Error ? error.message : 'Unknown error',
-  //         retries: { increment: 1 }
-  //       }
-  //     });
-
-  //     // Update bulk job stats
-  //     await this.updateBulkJobStats(bulkJobId, false);
-
-  //     // Update domain reputation
-  //     await prisma.domain.update({
-  //       where: { id: campaign.domain.id },
-  //       data: {
-  //         reputation: {
-  //           decrement: 0.5
-  //         }
-  //       }
-  //     });
-  //   }
-  // }
-
-
-
-// In your DatabaseMonitorService - fix the sendSingleEmail method
-
-private async sendSingleEmail(campaign: any, email: any, bulkJobId: string) {
-  let emailSend = await prisma.emailSend.findFirst({
-    where: {
-      emailId: email.id,
-      campaignId: campaign.id
-    }
-  });
-
-  if (!emailSend) {
-    emailSend = await prisma.emailSend.create({
-      data: {
+  private async sendSingleEmail(campaign: any, email: any, bulkJobId: string) {
+    let emailSend = await prisma.emailSend.findFirst({
+      where: {
         emailId: email.id,
-        campaignId: campaign.id,
-        status: 'PENDING'
+        campaignId: campaign.id
       }
     });
-  }
 
-  try {
-    // Configure provider based on domain
-    const provider = await this.configureProviderForDomain(campaign.domain);
-    const providerName = campaign.domain.smtpProvider?.toLowerCase() || 'custom';
-
-    // Get from email from domain configuration
-    let fromEmail: string;
-    
-    if (campaign.domain.fromEmail) {
-      fromEmail = campaign.domain.fromEmail;
-    } else {
-      // Fallback logic based on provider
-      switch (campaign.domain.smtpProvider?.toLowerCase()) {
-        case 'resend':
-          fromEmail = process.env.DEFAULT_RESEND_FROM_EMAIL || `noreply@${campaign.domain.domain}`;
-          break;
-        case 'mailtrap':
-          fromEmail = process.env.DEFAULT_MAILTRAP_FROM_EMAIL || `noreply@${campaign.domain.domain}`;
-          break;
-        default:
-          fromEmail = `noreply@${campaign.domain.domain}`;
-      }
+    if (!emailSend) {
+      emailSend = await prisma.emailSend.create({
+        data: {
+          emailId: email.id,
+          campaignId: campaign.id,
+          status: 'PENDING'
+        }
+      });
     }
 
-    // Use the fromName from campaign data with the domain's fromEmail
-    // const fromAddress = `${campaign.fromName} <${fromEmail}>`;
-       const fromAddress = `${fromEmail}`;
+    try {
+      // Check if provider is in cooling period
+      const providerKey = `${campaign.domain.smtpProvider}_${campaign.domain.id}`;
+      const coolingUntil = this.providerCoolingMap.get(providerKey);
+      
+      if (coolingUntil && coolingUntil > new Date()) {
+        logger.warn(`Provider ${providerKey} in cooling period, skipping email to ${email.address}`);
+        await prisma.emailSend.update({
+          where: { id: emailSend.id },
+          data: {
+            status: 'RETRYING',
+            bounceReason: `Provider cooling until ${coolingUntil}`
+          }
+        });
+        return;
+      }
 
-    const emailData: EmailMessage = {
-      to: email.address,
-      from: fromAddress, // Use the formatted from address
-      subject: campaign.subject,
-      html: campaign.content,
-    };
+      // Configure provider with enhanced validation
+      const provider = await this.configureProviderForDomain(campaign.domain);
+      const providerName = campaign.domain.smtpProvider?.toLowerCase() || 'custom';
 
-    logger.debug(`Sending email to ${email.address} from ${fromAddress} using ${providerName}`);
+      // Validate provider before sending
+      const isValid = await provider.validate();
+      if (!isValid) {
+        throw new Error(`Provider ${providerName} validation failed`);
+      }
 
-    // Send email
-    const result = await provider.send(emailData);
+      // Get from email - CRITICAL FIX for custom domains
+      let fromEmail: string;
+      
+      if (campaign.domain.fromEmail) {
+        fromEmail = campaign.domain.fromEmail;
+      } else {
+        // For custom domains, ensure we use the domain's email
+        fromEmail = `noreply@${campaign.domain.domain}`;
+      }
 
-    if (result.messageId) {
-      // Success - update email send record
+      // Format from address properly
+      const fromAddress = campaign.fromName ? 
+        `"${campaign.fromName}" <${fromEmail}>` : 
+        fromEmail;
+
+      const emailData: EmailMessage = {
+        to: email.address,
+        from: fromAddress,
+        subject: campaign.subject, // Ensure subject is explicitly set
+        html: campaign.content,
+        headers: {
+          'X-Campaign-ID': campaign.id,
+          'X-Email-ID': email.id
+        } as any
+      };
+
+      logger.debug(`Sending email to ${email.address} from ${fromAddress} using ${providerName}`);
+
+      // Send email with enhanced error handling
+      const result = await provider.send(emailData);
+
+      if (result.messageId) {
+        // Success - update email send record
+        await prisma.emailSend.update({
+          where: { id: emailSend.id },
+          data: {
+            status: 'SENT'
+          }
+        });
+
+        // Create tracking record
+        await prisma.emailTracking.create({
+          data: {
+            email: email.address,
+            jobId: bulkJobId,
+            messageId: result.messageId,
+            provider: providerName,
+            status: 'sent'
+          }
+        });
+
+        // Update bulk job stats
+        await this.updateBulkJobStats(bulkJobId, true);
+
+        logger.info(`Email sent successfully to ${email.address} from ${fromAddress} using ${providerName}`);
+      } else {
+        throw new Error('No message ID returned from provider');
+      }
+
+    } catch (error) {
+      logger.error(`Failed to send email to ${email.address}:`, error);
+
+      // Check if this is a connection error that requires cooling
+      if (this.isConnectionError(error)) {
+        const providerKey = `${campaign.domain.smtpProvider}_${campaign.domain.id}`;
+        const coolingPeriod = new Date(Date.now() + (5 * 60 * 1000)); // 5 minutes cooling
+        this.providerCoolingMap.set(providerKey, coolingPeriod);
+        logger.warn(`Activated cooling for provider ${providerKey} until ${coolingPeriod}`);
+      }
+
+      // Update email send record as failed
       await prisma.emailSend.update({
         where: { id: emailSend.id },
         data: {
-          status: 'SENT'
-        }
-      });
-
-      // Create tracking record
-      await prisma.emailTracking.create({
-        data: {
-          email: email.address,
-          jobId: bulkJobId,
-          messageId: result.messageId,
-          provider: providerName,
-          status: 'sent'
+          status: 'FAILED',
+          bounceReason: error instanceof Error ? error.message : 'Unknown error',
+          retries: { increment: 1 }
         }
       });
 
       // Update bulk job stats
-      await this.updateBulkJobStats(bulkJobId, true);
-
-      logger.info(`Email sent successfully to ${email.address} from ${fromAddress} using ${providerName}`);
-    } else {
-      throw new Error('No message ID returned from provider');
+      await this.updateBulkJobStats(bulkJobId, false);
     }
-
-  } catch (error) {
-    logger.error(`Failed to send email to ${email.address}:`, error);
-
-    // Update email send record as failed
-    await prisma.emailSend.update({
-      where: { id: emailSend.id },
-      data: {
-        status: 'FAILED',
-        bounceReason: error instanceof Error ? error.message : 'Unknown error',
-        retries: { increment: 1 }
-      }
-    });
-
-    // Update bulk job stats
-    await this.updateBulkJobStats(bulkJobId, false);
   }
-}
 
+  private isConnectionError(error: any): boolean {
+    const errorMessage = error.message?.toLowerCase() || '';
+    return errorMessage.includes('timeout') ||
+           errorMessage.includes('connection') ||
+           errorMessage.includes('econn') ||
+           error.code === 'ETIMEDOUT' ||
+           error.code === 'ECONNREFUSED';
+  }
 
-  /**
-   * Configure email provider based on domain settings
-   */
   private async configureProviderForDomain(domain: any): Promise<IEmailProvider> {
     const providerName = domain.smtpProvider?.toLowerCase() || 'custom';
     
@@ -582,7 +475,7 @@ private async sendSingleEmail(campaign: any, email: any, bulkJobId: string) {
         providerConfig = {
           name: 'resend',
           apiKey: process.env.RESEND_API_KEY,
-          defaultFrom: process.env.DEFAULT_RESEND_FROM_EMAIL
+          defaultFrom: domain.fromEmail || `noreply@${domain.domain}`
         };
         break;
 
@@ -590,7 +483,7 @@ private async sendSingleEmail(campaign: any, email: any, bulkJobId: string) {
         providerConfig = {
           name: 'mailtrap',
           apiKey: process.env.MAILTRAP_API_KEY,
-          defaultFrom: process.env.DEFAULT_MAILTRAP_FROM_EMAIL
+          defaultFrom: domain.fromEmail || `noreply@${domain.domain}`
         };
         break;
 
@@ -609,15 +502,22 @@ private async sendSingleEmail(campaign: any, email: any, bulkJobId: string) {
             auth: {
               user: domain.smtpUsername,
               pass: domain.smtpPassword
-            }
+            },
+            // Enhanced SMTP configuration
+            pool: true,
+            maxConnections: 3,
+            socketTimeout: 30000,
+            connectionTimeout: 10000,
+            greetingTimeout: 10000,
           },
-          defaultFrom:`noreply@${domain.domain}`
+          defaultFrom: domain.fromEmail || `noreply@${domain.domain}`
         };
         break;
     }
 
     return EmailProviderFactory.createProvider(providerConfig);
   }
+
 
   /**
    * Update bulk job statistics and handle completion
@@ -664,56 +564,6 @@ private async sendSingleEmail(campaign: any, email: any, bulkJobId: string) {
     }
   }
 
-  /**
-   * Validate domain for sending
-   */
-  // private async validateDomainForSending(domain: any): Promise<boolean> {
-  //   try {
-  //     const validProviders = ['custom', 'resend', 'mailtrap'];
-      
-  //     if (!domain.smtpProvider || !validProviders.includes(domain.smtpProvider)) {
-  //       logger.error(`Invalid SMTP provider for domain ${domain.id}: ${domain.smtpProvider}`);
-  //       return false;
-  //     }
-
-  //     // Check provider-specific requirements
-  //     switch (domain.smtpProvider) {
-  //       case 'custom':
-  //         if (!domain.verified) {
-  //           logger.error(`Domain ${domain.id} is not verified for custom SMTP`);
-  //           return false;
-  //         }
-  //         if (!domain.smtpHost || !domain.smtpUsername || !domain.smtpPassword) {
-  //           logger.error(`Custom SMTP configuration incomplete for domain ${domain.id}`);
-  //           return false;
-  //         }
-  //         break;
-        
-  //       case 'resend':
-  //       case 'mailtrap':
-  //         // For these providers, we mainly need the API keys from environment
-  //         if (!process.env[`${domain.smtpProvider.toUpperCase()}_API_KEY`]) {
-  //           logger.error(`API key missing for ${domain.smtpProvider} provider`);
-  //           return false;
-  //         }
-  //         break;
-  //     }
-
-  //     // Check domain warmup limits if enabled
-  //     if (domain.enableDomainWarmup) {
-  //       const warmupStatus = await this.checkDomainWarmupStatus(domain.id);
-  //       if (warmupStatus.isInWarmup && warmupStatus.sentLast30Days >= warmupStatus.dailyLimit) {
-  //         logger.warn(`Domain ${domain.id} daily warmup limit reached: ${warmupStatus.sentLast30Days}/${warmupStatus.dailyLimit}`);
-  //         return false;
-  //       }
-  //     }
-
-  //     return true;
-  //   } catch (error) {
-  //     logger.error(`Error validating domain ${domain.id}:`, error);
-  //     return false;
-  //   }
-  // }
 
   private async validateDomainForSending(domain: any): Promise<boolean> {
   try {

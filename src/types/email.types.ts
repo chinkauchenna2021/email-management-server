@@ -16,6 +16,7 @@ export interface EmailMessage {
   replyTo?: string;
   cc?: string[];
   bcc?: string[];
+  headers?:any;
   attachments?: Array<{
     filename: string;
     content: Buffer | string;

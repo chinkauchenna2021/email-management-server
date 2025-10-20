@@ -1,9 +1,9 @@
+// providers/ResendProvider.ts
 import { BaseProvider } from './BaseProvider';
-import { EmailMessage, EmailProviderConfig } from './email.types';
-import {Resend} from 'resend'
+import { EmailMessage, EmailProviderConfig } from '../types/email.types';
 
 export class ResendProvider extends BaseProvider {
-  private resend:any;
+  private resend: any;
 
   constructor(config: EmailProviderConfig) {
     super(config);
@@ -13,26 +13,40 @@ export class ResendProvider extends BaseProvider {
     }
 
     // Dynamic import for Resend
+    const { Resend } = require('resend');
     this.resend = new Resend(config.apiKey);
   }
 
   async send(email: EmailMessage): Promise<any> {
     this.validateEmailMessage(email);
 
-    const result = await this.resend.emails.send({
+    // CRITICAL FIX: Ensure subject is properly set and not overridden
+    const emailData: any = {
       from: this.getFromEmail(email),
       to: Array.isArray(email.to) ? email.to : [email.to],
-      subject: email.subject,
+      subject: email.subject, // Explicitly set subject from email object
       html: email.html,
       text: email.text,
       cc: email.cc,
       bcc: email.bcc,
       reply_to: email.replyTo,
-      attachments: email.attachments,
-    });
+    };
+
+    // Handle attachments if present
+    if (email.attachments && email.attachments.length > 0) {
+      emailData.attachments = email.attachments.map(att => ({
+        filename: att.filename,
+        content: typeof att.content === 'string' ? 
+                 Buffer.from(att.content).toString('base64') : 
+                 att.content.toString('base64'),
+        content_type: att.contentType,
+      }));
+    }
+
+    const result = await this.resend.emails.send(emailData);
 
     if (result.error) {
-      throw new Error(result.error.message);
+      throw new Error(`Resend API error: ${result.error.message}`);
     }
 
     return {
@@ -42,7 +56,7 @@ export class ResendProvider extends BaseProvider {
   }
 
   async sendBulk(emails: EmailMessage[]): Promise<any> {
-    const batchSize = 100; // Resend recommended batch size
+    const batchSize = 100;
     const results = [];
 
     for (let i = 0; i < emails.length; i += batchSize) {
@@ -78,17 +92,22 @@ export class ResendProvider extends BaseProvider {
 
   async validate(): Promise<boolean> {
     try {
-      // Try to get account info or send a test email
-      await this.resend.emails.send({
-        from: this.config.defaultFrom || 'test@example.com',
+      // Test with a simple validation request
+      const testResult = await this.resend.emails.send({
+        from: this.config.defaultFrom || 'system@example.com',
         to: 'test@example.com',
-        subject: 'Validation Test',
-        html: '<p>Test</p>',
+        subject: 'Provider Validation Test',
+        html: '<p>This is a validation test email</p>',
       });
-      return true;
+
+      return !testResult.error;
     } catch (error) {
       console.error('Resend validation failed:', error);
       return false;
     }
+  }
+
+  getProviderName(): string {
+    return 'resend';
   }
 }
